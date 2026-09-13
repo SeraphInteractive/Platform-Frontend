@@ -4,23 +4,27 @@ import { VotingRound } from '../hooks/useVotingApi.ts';
 interface HeroSectionProps {
   activeRound?: VotingRound;
   totalBallots: number;
+  onOpenCreatePitch?: () => void;
+  onNavigateBallot?: () => void;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
   activeRound,
   totalBallots,
+  onOpenCreatePitch,
+  onNavigateBallot,
 }) => {
   return (
     <section className="hero-section">
-      {/* Title and subtitle on the left */}
+      {/* Title and subtitle */}
       <div className="hero-left">
         <span className="hero-subtitle">
-          Data Based on All Community Ballots
+          Active Round: {activeRound?.title || 'Community Pitches'}
         </span>
         <h1 className="hero-title">Overview Panel</h1>
       </div>
 
-      {/* Layered glowing green card stack with filter pills */}
+      {/* Layered glowing green card stack with working filter buttons */}
       <div className="hero-card-stack" style={{ position: 'relative' }}>
         {/* Background translucent layers */}
         <div
@@ -67,22 +71,34 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
         {/* Filter controls */}
         <div className="hero-filters" style={{ position: 'relative', zIndex: 3 }}>
-          <div className="filter-pill">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button
+            type="button"
+            className="filter-pill"
+            onClick={onNavigateBallot}
+            title="Go to Ballot Box"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            <span>{activeRound ? 'Active Round' : '01.12.2026'}</span>
-          </div>
+            <span>Cast Vote</span>
+          </button>
 
-          <div className="filter-pill">
-            <span>All Pitches</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 12 15 18 9" />
+          <button
+            type="button"
+            className="filter-pill"
+            onClick={onOpenCreatePitch}
+            title="Submit a new pitch"
+            style={{ background: 'var(--accent-dark)', color: '#ffffff', borderColor: 'var(--accent-dark)' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-          </div>
+            <span>New Pitch</span>
+          </button>
         </div>
       </div>
     </section>

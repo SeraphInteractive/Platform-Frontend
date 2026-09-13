@@ -3,7 +3,6 @@ import {
   useActiveRound,
   useRoundEntries,
   useLiveLeaderboard,
-  useCastBallot,
   useLiveTelemetry,
 } from '../../hooks/useVotingApi.ts';
 import { useAuth, UserRole } from '../../context/AuthContext.tsx';
@@ -16,7 +15,6 @@ import {
   calculate_regularized_leaderboard,
   analyze_raid_risk,
   POINTS_PER_BALLOT,
-  type EntryId,
   type Ballot,
 } from '@platform/internal-logic';
 
@@ -52,7 +50,6 @@ export const DevWorkbench: React.FC = () => {
   const [apiUrl, setApiUrl] = useState<string>(getApiBaseUrl());
   const [apiStatusMessage, setApiStatusMessage] = useState<string | null>(null);
 
-  const castMutation = useCastBallot(roundId);
   const { data: telemetryList = [] } = useLiveTelemetry(roundId, leaderboard);
 
   // Make sure selection defaults don't point to empty strings
@@ -123,29 +120,25 @@ export const DevWorkbench: React.FC = () => {
     setTimeout(() => setApiStatusMessage(null), 3000);
   };
 
-  // Inject test ballots into the pool
-  const handleInjectBurst = async (type: 'organic' | 'raid') => {
-    if (entries.length < 3) return;
-    const entryIds = entries.map((e) => e.id);
-    const N_burst = type === 'raid' ? 30 : 15;
-
-    for (let i = 0; i < N_burst; i++) {
-      let r1: EntryId, r2: EntryId, r3: EntryId;
-      if (type === 'raid') {
-        r1 = selectedRaidEntry;
-        const remaining = entryIds.filter((id) => id !== selectedRaidEntry);
-        r2 = remaining[0]!;
-        r3 = remaining[1]!;
-      } else {
-        const shuffled = [...entryIds].sort(() => Math.random() - 0.5);
-        r1 = shuffled[0]!;
-        r2 = shuffled[1]!;
-        r3 = shuffled[2]!;
-      }
-
-      await castMutation.mutateAsync({ rank1: r1, rank2: r2, rank3: r3 });
-    }
-  };
+  if (user?.role !== 'admin') {
+    return (
+      <div className="container">
+        <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>
+            Restricted Developer Diagnostics
+          </div>
+          <p style={{ color: 'var(--text-muted)', maxWidth: 460, margin: '0 auto 20px' }}>
+            This panel is reserved for administrators and developers to audit mathematical invariants and raid telemetry against live API.
+          </p>
+          <div>
+            <button className="btn-dark" onClick={() => loginAsDevUser('admin')}>
+              Elevate to Admin Role
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container">
@@ -158,7 +151,7 @@ export const DevWorkbench: React.FC = () => {
               Real-time audit of mathematical invariants, moments, Z-score hypothesis testing, and Batman raid telemetry against live API.
             </div>
           </div>
-          <span className="badge badge-engine">Dev Mode Active</span>
+          <span className="badge badge-engine">Admin Active</span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, alignItems: 'center' }}>
@@ -531,22 +524,6 @@ export const DevWorkbench: React.FC = () => {
               {((targetRaidTelemetry.breakdown.rank1ToTotalRatio) * 100).toFixed(1)}%
             </div>
           </div>
-        </div>
-
-        {/* Live Simulator Injector */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 16, borderTop: '1px solid var(--border-color)', paddingTop: 14 }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => handleInjectBurst('organic')}
-          >
-            Inject +15 Organic Ballots
-          </button>
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => handleInjectBurst('raid')}
-          >
-            Simulate +30 Streamer Raid Spam on Selected Pitch
-          </button>
         </div>
       </div>
     </div>

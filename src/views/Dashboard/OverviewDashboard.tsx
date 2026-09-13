@@ -2,30 +2,29 @@ import React from 'react';
 import { HeroSection } from '../../components/HeroSection.tsx';
 import { MetricsRow } from './MetricsRow.tsx';
 import { GraphsRow } from './GraphsRow.tsx';
-import { SubmittersRow, SubmitterProfile } from './SubmittersRow.tsx';
+import { SubmittersRow } from './SubmittersRow.tsx';
 import {
   useActiveRound,
   useRoundEntries,
   useLiveLeaderboard,
-  useLiveTelemetry,
 } from '../../hooks/useVotingApi.ts';
 
 interface OverviewDashboardProps {
-  onNavigateTab?: (tab: 'overview' | 'ballot' | 'pitches' | 'leaderboard' | 'diagnostics') => void;
-  onSelectSubmitter?: (submitter: SubmitterProfile) => void;
+  onNavigateTab: (tab: 'overview' | 'ballot' | 'pitches' | 'leaderboard' | 'diagnostics') => void;
+  onOpenCreatePitch: () => void;
+  onSelectEntryForVote?: (entryId: string) => void;
 }
 
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
   onNavigateTab,
-  onSelectSubmitter,
+  onOpenCreatePitch,
+  onSelectEntryForVote,
 }) => {
-  // TanStack Query hooks fetching live rounds and standings
   const { activeRound } = useActiveRound();
   const roundId = activeRound?.id || 'round-scene-pitch-42';
 
   const { data: entries = [] } = useRoundEntries(roundId);
   const { data: boardData } = useLiveLeaderboard(roundId, entries);
-  const { data: telemetryData } = useLiveTelemetry(roundId, boardData?.leaderboard || []);
 
   const totalBallots = boardData?.totalBallots || 0;
   const totalPointsAwarded = boardData?.totalPointsAwarded || 0;
@@ -33,38 +32,47 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
   const isConserved = boardData?.isConserved ?? true;
   const leaderboard = boardData?.leaderboard || [];
 
-  // Compute anomaly score from live telemetry
-  const anomalyScore = Array.isArray(telemetryData) && telemetryData.length > 0
-    ? telemetryData.reduce((acc: number, t: any) => Math.max(acc, t?.p_value ? 1 - t.p_value : 0.1), 0.1)
-    : 0.1012;
-
   return (
     <div className="tab-content-area">
-      {/* Top Hero Section with Green Glowing Insight Card */}
-      <HeroSection activeRound={activeRound} totalBallots={totalBallots} />
+      {/* Top Hero Section with Green Glowing Insight Card and real actions */}
+      <HeroSection
+        activeRound={activeRound}
+        totalBallots={totalBallots}
+        onOpenCreatePitch={onOpenCreatePitch}
+        onNavigateBallot={() => onNavigateTab('ballot')}
+      />
 
-      {/* Main Dashboard Layout Flow */}
+      {/* Main Dashboard Rows */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* Top 3 Metric Cards matching screenshot */}
+        {/* Top 3 Metric Cards with Real Participation & Leader telemetry */}
         <MetricsRow
           totalBallots={totalBallots}
           totalPointsAwarded={totalPointsAwarded}
           expectedPoints={expectedPoints}
           isConserved={isConserved}
           leaderboard={leaderboard}
-          anomalyScore={anomalyScore}
+          entries={entries}
         />
 
-        {/* Middle 2 Graphs Cards */}
+        {/* Middle 2 Graphs: 3-2-1 Distribution & Lead Margin */}
         <GraphsRow
-          expectedMean={1.94}
-          zScore={2.45}
+          leaderboard={leaderboard}
+          totalBallots={totalBallots}
         />
 
-        {/* Bottom 3 Submitters Cards */}
-        <SubmittersRow onSelectSubmitter={onSelectSubmitter} />
+        {/* Bottom 3 Submitters Ribbon */}
+        <SubmittersRow
+          entries={entries}
+          onSelectEntry={(id) => {
+            if (onSelectEntryForVote) {
+              onSelectEntryForVote(id);
+            } else {
+              onNavigateTab('pitches');
+            }
+          }}
+        />
 
-        {/* Quick Standings and Action Footer Card */}
+        {/* Active Standings Table with Working Actions */}
         <div className="white-card" style={{ marginTop: 4 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
@@ -78,14 +86,20 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
 
             <div style={{ display: 'flex', gap: 8 }}>
               <button
+                className="btn-subtle"
+                onClick={onOpenCreatePitch}
+              >
+                + Submit Pitch
+              </button>
+              <button
                 className="btn-dark"
-                onClick={() => onNavigateTab && onNavigateTab('ballot')}
+                onClick={() => onNavigateTab('ballot')}
               >
                 Cast 3-2-1 Ballot
               </button>
               <button
                 className="btn-subtle"
-                onClick={() => onNavigateTab && onNavigateTab('leaderboard')}
+                onClick={() => onNavigateTab('leaderboard')}
               >
                 Full Leaderboard
               </button>
@@ -96,12 +110,14 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
             <table className="clean-table">
               <thead>
                 <tr>
-                  <th>Rank</th>
+                  <th style={{ width: 60 }}>Rank</th>
                   <th>Pitch Title</th>
-                  <th style={{ textAlign: 'center' }}>1st Place (3pts)</th>
-                  <th style={{ textAlign: 'center' }}>2nd Place (2pts)</th>
-                  <th style={{ textAlign: 'center' }}>3rd Place (1pt)</th>
+                  <th>Creator</th>
+                  <th style={{ textAlign: 'center' }}>1st Place (3p)</th>
+                  <th style={{ textAlign: 'center' }}>2nd Place (2p)</th>
+                  <th style={{ textAlign: 'center' }}>3rd Place (1p)</th>
                   <th style={{ textAlign: 'right' }}>Total Points</th>
+                  <th style={{ width: 120, textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -109,11 +125,14 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
                   const entry = entries.find((e) => e.id === item.entryId);
                   return (
                     <tr key={item.entryId}>
-                      <td style={{ fontWeight: 800, width: 60 }} className="mono">
+                      <td style={{ fontWeight: 800 }} className="mono">
                         #{idx + 1}
                       </td>
                       <td style={{ fontWeight: 600 }}>
                         {entry?.title || item.entryId}
+                      </td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                        {entry?.submitterUsername || 'Community Creator'}
                       </td>
                       <td style={{ textAlign: 'center' }} className="mono">
                         {item.rank1Count}
@@ -126,6 +145,17 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
                       </td>
                       <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--accent-green)' }} className="mono">
                         {item.rawScore} pts
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          className="btn-subtle btn-sm"
+                          onClick={() => {
+                            if (onSelectEntryForVote) onSelectEntryForVote(item.entryId);
+                            onNavigateTab('ballot');
+                          }}
+                        >
+                          Vote for This
+                        </button>
                       </td>
                     </tr>
                   );

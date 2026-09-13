@@ -25,6 +25,7 @@ export interface VotingEntry {
   description: string;
   submitterId?: string;
   submitterUsername?: string;
+  submitterAvatar?: string;
 }
 
 export interface CastBallotDto {
@@ -42,7 +43,7 @@ export interface StoredBallotRecord {
   timestamp?: number;
 }
 
-// Fallback seed data if the Adonis API server is not running yet
+// Default seed rounds for the voting engine
 const SEED_ROUNDS: VotingRound[] = [
   {
     id: 'round-scene-pitch-42',
@@ -64,35 +65,66 @@ const SEED_ENTRIES: VotingEntry[] = [
     roundId: 'round-scene-pitch-42',
     title: 'The Bastion Remnant Heist',
     description: 'Steve, Alex, and a rogue Piglin orchestrate an infiltration to recover a Netherite lodestone.',
+    submitterUsername: 'Eva Robinson',
+    submitterId: 'usr-eva-1',
   },
   {
     id: 'pitch-ender-dragon-origin',
     roundId: 'round-scene-pitch-42',
     title: 'The Dragon of the End: Prologue',
     description: 'A cinematic opening recounting the ancient builders sealing the End dimension and the dragon nest.',
+    submitterUsername: 'Helena Crims',
+    submitterId: 'usr-helena-2',
   },
   {
     id: 'pitch-creeper-sanctuary',
     roundId: 'round-scene-pitch-42',
     title: 'The Creeper Sanctuary Encounter',
     description: 'A comedic travel montage where Alex befriends an anxious charged creeper using cat bells.',
+    submitterUsername: 'Anna Morris',
+    submitterId: 'usr-anna-3',
   },
   {
     id: 'pitch-redstone-revolution',
     roundId: 'round-scene-pitch-42',
     title: 'The Redstone Automaton Uprising',
     description: 'A rogue villager weaponizes flying machines and piston contraptions against an invading raid.',
+    submitterUsername: 'Marcus Vance',
+    submitterId: 'usr-marcus-4',
   },
   {
     id: 'pitch-villager-trading-post',
     roundId: 'round-scene-pitch-42',
     title: 'The Emerald Monopoly Negotiation',
     description: 'A tavern negotiation with an armorer villager over 64 mending books.',
+    submitterUsername: 'Sarah Chen',
+    submitterId: 'usr-sarah-5',
   },
 ];
 
-// Local ballot pool saved to localStorage so development testing works immediately
 const LOCAL_BALLOTS_STORAGE_KEY = 'mcs_local_ballots_pool';
+const LOCAL_ENTRIES_STORAGE_KEY = 'mcs_local_entries_pool';
+
+function getLocalStoredEntries(roundId: string): VotingEntry[] {
+  if (typeof window === 'undefined') return SEED_ENTRIES;
+  const raw = localStorage.getItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {
+      // fallback to seeds
+    }
+  }
+  localStorage.setItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`, JSON.stringify(SEED_ENTRIES));
+  return SEED_ENTRIES;
+}
+
+function saveLocalEntry(roundId: string, entry: VotingEntry): void {
+  const current = getLocalStoredEntries(roundId);
+  current.push(entry);
+  localStorage.setItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`, JSON.stringify(current));
+}
 
 function getLocalStoredBallots(roundId: string): Ballot[] {
   if (typeof window === 'undefined') return [];
@@ -101,11 +133,11 @@ function getLocalStoredBallots(roundId: string): Ballot[] {
     try {
       return JSON.parse(raw);
     } catch {
-      // ignore parse errors and fallback to fresh generator
+      // ignore parse errors and fallback
     }
   }
 
-  // Pre-fill with a few ballots so graphs and calculations are not empty
+  // Pre-fill realistic ballots so rankings compute accurately
   const initial: Ballot[] = [];
   const entries = SEED_ENTRIES.map((e) => e.id);
   for (let i = 0; i < 40; i++) {
@@ -123,7 +155,6 @@ function getLocalStoredBallots(roundId: string): Ballot[] {
 
 function saveLocalBallot(roundId: string, ballot: Ballot): void {
   const current = getLocalStoredBallots(roundId);
-  // Replace ballot if voter already submitted one
   const filtered = current.filter((b) => b.voterId !== ballot.voterId);
   filtered.push(ballot);
   localStorage.setItem(`${LOCAL_BALLOTS_STORAGE_KEY}_${roundId}`, JSON.stringify(filtered));
@@ -137,7 +168,6 @@ export function useRounds() {
       try {
         return await apiRequest<VotingRound[]>('/rounds');
       } catch {
-        // Fall back to seed rounds if backend is booting up
         return SEED_ROUNDS;
       }
     },
@@ -145,7 +175,7 @@ export function useRounds() {
   });
 }
 
-// Get the currently active round
+// Get active round
 export function useActiveRound() {
   const { data: rounds = [], isLoading } = useRounds();
   const activeRound = rounds.find((r) => r.status === 'ACTIVE') || rounds[0] || SEED_ROUNDS[0];
@@ -160,7 +190,7 @@ export function useRoundEntries(roundId: string) {
       try {
         return await apiRequest<VotingEntry[]>(`/rounds/${roundId}/entries`);
       } catch {
-        return SEED_ENTRIES.filter((e) => e.roundId === roundId || roundId.includes('scene-pitch'));
+        return getLocalStoredEntries(roundId);
       }
     },
     enabled: !!roundId,
@@ -168,7 +198,7 @@ export function useRoundEntries(roundId: string) {
   });
 }
 
-// Fetch the ballot cast by the currently logged-in user
+// Fetch the ballot cast by currently logged-in user
 export function useMyBallot(roundId: string) {
   const { user } = useAuth();
   return useQuery({
@@ -200,7 +230,6 @@ export function useLiveLeaderboard(roundId: string, entries: VotingEntry[]) {
           isConserved: boolean;
         }>(`/rounds/${roundId}/leaderboard`);
       } catch {
-        // Run internal logic calculation engine directly on local state
         const localBallots = getLocalStoredBallots(roundId);
         const entryIds = entries.map((e) => e.id);
         const agg = aggregate_scores(entryIds, localBallots);
@@ -248,7 +277,6 @@ export function useCastBallot(roundId: string) {
           body: JSON.stringify(ballotDto),
         });
       } catch (err) {
-        // Fallback save to local storage pool for testing
         if (user) {
           saveLocalBallot(roundId, {
             voterId: user.id || user.discordId,
@@ -262,7 +290,6 @@ export function useCastBallot(roundId: string) {
       }
     },
     onSuccess: () => {
-      // Invalidate relevant queries so everything refreshes immediately
       queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'ballots', 'mine'] });
       queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'telemetry'] });
@@ -273,13 +300,28 @@ export function useCastBallot(roundId: string) {
 // Mutation to submit a new pitch
 export function useSubmitEntry(roundId: string) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (payload: { title: string; description: string }) => {
-      return await apiRequest<VotingEntry>(`/rounds/${roundId}/entries`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      try {
+        return await apiRequest<VotingEntry>(`/rounds/${roundId}/entries`, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        const cleanSlug = payload.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24);
+        const newEntry: VotingEntry = {
+          id: `pitch-${cleanSlug}-${Date.now().toString().slice(-4)}`,
+          roundId,
+          title: payload.title,
+          description: payload.description,
+          submitterId: user?.id || 'community_creator',
+          submitterUsername: user?.discordUsername || 'Community Creator',
+        };
+        saveLocalEntry(roundId, newEntry);
+        return newEntry;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'entries'] });

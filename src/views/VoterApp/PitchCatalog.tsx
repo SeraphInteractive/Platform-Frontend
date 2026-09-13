@@ -7,6 +7,7 @@ interface PitchCatalogProps {
   selectedRank2: string;
   selectedRank3: string;
   onSelectRank: (rank: 1 | 2 | 3, entryId: string) => void;
+  onOpenCreatePitch?: () => void;
 }
 
 export const PitchCatalog: React.FC<PitchCatalogProps> = ({
@@ -15,6 +16,7 @@ export const PitchCatalog: React.FC<PitchCatalogProps> = ({
   selectedRank2,
   selectedRank3,
   onSelectRank,
+  onOpenCreatePitch,
 }) => {
   return (
     <div className="card">
@@ -25,7 +27,15 @@ export const PitchCatalog: React.FC<PitchCatalogProps> = ({
             Explore community script pitches and assign your 1st (3pts), 2nd (2pts), and 3rd (1pt) place picks.
           </div>
         </div>
-        <span className="badge badge-engine">{entries.length} Pitches</span>
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span className="badge badge-engine">{entries.length} Pitches</span>
+          {onOpenCreatePitch && (
+            <button className="btn-dark" onClick={onOpenCreatePitch}>
+              + Submit Pitch
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="pitch-grid">
@@ -50,17 +60,20 @@ export const PitchCatalog: React.FC<PitchCatalogProps> = ({
               }}
             >
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                   <div className="pitch-title">{pitch.title}</div>
-                  {isRank1 && <span className="badge slot-rank-1">1st Place</span>}
-                  {isRank2 && <span className="badge slot-rank-2">2nd Place</span>}
-                  {isRank3 && <span className="badge slot-rank-3">3rd Place</span>}
+                  {isRank1 && <span className="slot-badge slot-rank-1">1st Place (3p)</span>}
+                  {isRank2 && <span className="slot-badge slot-rank-2">2nd Place (2p)</span>}
+                  {isRank3 && <span className="slot-badge slot-rank-3">3rd Place (1p)</span>}
                 </div>
                 <div className="pitch-desc">{pitch.description}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-light)', marginTop: 8 }}>
+                  By: {pitch.submitterUsername || 'Community Creator'}
+                </div>
               </div>
 
               <div className="pitch-footer">
-                <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                <span className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                   {pitch.id}
                 </span>
 
@@ -68,21 +81,21 @@ export const PitchCatalog: React.FC<PitchCatalogProps> = ({
                 <div className="pitch-actions">
                   <button
                     className={`btn btn-sm ${isRank1 ? 'btn-primary' : 'btn-secondary'}`}
-                    style={isRank1 ? { background: 'var(--accent-gold)', color: '#000' } : {}}
+                    style={isRank1 ? { background: 'var(--accent-gold)', color: '#000', borderColor: 'var(--accent-gold)' } : {}}
                     onClick={() => onSelectRank(1, pitch.id)}
                   >
                     1st (3p)
                   </button>
                   <button
                     className={`btn btn-sm ${isRank2 ? 'btn-primary' : 'btn-secondary'}`}
-                    style={isRank2 ? { background: 'var(--accent-silver)', color: '#000' } : {}}
+                    style={isRank2 ? { background: 'var(--accent-silver)', color: '#000', borderColor: 'var(--accent-silver)' } : {}}
                     onClick={() => onSelectRank(2, pitch.id)}
                   >
                     2nd (2p)
                   </button>
                   <button
                     className={`btn btn-sm ${isRank3 ? 'btn-primary' : 'btn-secondary'}`}
-                    style={isRank3 ? { background: 'var(--accent-bronze)', color: '#fff' } : {}}
+                    style={isRank3 ? { background: 'var(--accent-bronze)', color: '#fff', borderColor: 'var(--accent-bronze)' } : {}}
                     onClick={() => onSelectRank(3, pitch.id)}
                   >
                     3rd (1p)
