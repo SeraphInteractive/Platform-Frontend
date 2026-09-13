@@ -10,6 +10,8 @@ export interface UserProfile {
   discordUsername: string;
   discordAvatar?: string;
   role: UserRole;
+  warnings?: number;
+  isBarred?: boolean;
 }
 
 interface AuthContextType {
@@ -17,9 +19,13 @@ interface AuthContextType {
   user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  warnings: number;
+  isBarred: boolean;
   loginWithDiscord: () => void;
   setAuthToken: (token: string) => void;
   loginAsDevUser: (role?: UserRole, username?: string) => void;
+  addWarning: () => void;
+  clearWarnings: () => void;
   logout: () => void;
 }
 
@@ -27,6 +33,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'mcs_auth_token';
 const DEV_USER_KEY = 'mcs_dev_user';
+const WARNINGS_KEY = 'mcs_user_warnings';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
@@ -35,6 +42,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return localStorage.getItem(TOKEN_KEY);
     }
     return null;
+  });
+
+  const [warnings, setWarnings] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(WARNINGS_KEY);
+      return stored ? parseInt(stored, 10) || 0 : 0;
+    }
+    return 0;
   });
 
   const [devUser, setDevUser] = useState<UserProfile | null>(() => {
@@ -78,7 +93,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [error, token]);
 
-  const activeUser: UserProfile | null = apiUser || devUser;
+  const rawUser = apiUser || devUser;
+  const isBarred = warnings >= 3;
+
+  const activeUser: UserProfile | null = rawUser
+    ? {
+        ...rawUser,
+        warnings,
+        isBarred,
+      }
+    : null;
+
+  const addWarning = () => {
+    setWarnings((prev) => {
+      const next = prev + 1;
+      localStorage.setItem(WARNINGS_KEY, next.toString());
+      return next;
+    });
+  };
+
+  const clearWarnings = () => {
+    setWarnings(0);
+    localStorage.setItem(WARNINGS_KEY, '0');
+  };
 
   const setAuthToken = (newToken: string) => {
     localStorage.setItem(TOKEN_KEY, newToken);
@@ -118,9 +155,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user: activeUser,
         isLoading: !!token && isApiLoading,
         isAuthenticated: !!activeUser,
+        warnings,
+        isBarred,
         loginWithDiscord,
         setAuthToken,
         loginAsDevUser,
+        addWarning,
+        clearWarnings,
         logout,
       }}
     >

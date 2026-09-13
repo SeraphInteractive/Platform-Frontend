@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { useAuth, UserRole } from '../context/AuthContext.tsx';
+import { useAuth } from '../context/AuthContext.tsx';
+import { SettingsDropdown } from './SettingsDropdown.tsx';
+import { SettingsSubTab } from '../views/Settings/SettingsPage.tsx';
 
-export type NavTabId = 'overview' | 'ballot' | 'pitches' | 'leaderboard' | 'diagnostics';
+export type NavTabId = 'overview' | 'ballot' | 'pitches' | 'leaderboard' | 'diagnostics' | 'settings';
 
 interface NavbarProps {
   activeTab: NavTabId;
   onTabChange: (tab: NavTabId) => void;
+  onNavigateSettings: (subTab?: SettingsSubTab) => void;
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onOpenCreatePitch: () => void;
@@ -14,22 +17,15 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
+  onNavigateSettings,
   searchQuery,
   onSearchChange,
   onOpenCreatePitch,
 }) => {
-  const { user, loginWithDiscord, loginAsDevUser, logout } = useAuth();
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const { user, loginWithDiscord, loginAsDevUser } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
 
   const isAdmin = user?.role === 'admin';
-
-  const handleRoleSelect = (role: UserRole) => {
-    loginAsDevUser(role, role === 'admin' ? 'AdminDev' : 'CommunityVoter');
-    setShowRoleMenu(false);
-    if (role === 'user' && activeTab === 'diagnostics') {
-      onTabChange('overview');
-    }
-  };
 
   return (
     <header className="top-navbar">
@@ -78,10 +74,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               Diagnostics
             </button>
           )}
+
+          {activeTab === 'settings' && (
+            <button className="nav-link-btn active">
+              Settings
+            </button>
+          )}
         </nav>
       </div>
 
-      {/* Right actions: search input, create pitch button, user profile */}
+      {/* Right actions: search input, create pitch button, settings & user profile */}
       <div className="nav-right">
         <div className="search-pill">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-light)' }}>
@@ -116,13 +118,24 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span>Submit Pitch</span>
         </button>
 
-        {/* Role toggle and user profile */}
-        <div style={{ position: 'relative' }}>
+        {/* Settings gear button and user profile with dropdown */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className={`icon-btn ${showSettings ? 'active' : ''}`}
+            title="Settings & Profile"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+
           {user ? (
             <div
               className="user-pill"
-              onClick={() => setShowRoleMenu(!showRoleMenu)}
-              title="Click to switch role or log out"
+              onClick={() => setShowSettings(!showSettings)}
+              title="Open profile & settings"
             >
               <img
                 src={user.discordAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
@@ -145,54 +158,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
 
-          {/* Role selector dropdown */}
-          {showRoleMenu && (
-            <div
-              className="white-card"
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: 8,
-                padding: 10,
-                width: 200,
-                zIndex: 100,
-                boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-              }}
-            >
-              <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', padding: '4px 8px', textTransform: 'uppercase' }}>
-                Select Active Role
-              </div>
-              <button
-                className={`nav-link-btn ${user?.role === 'user' ? 'active' : ''}`}
-                style={{ textAlign: 'left', width: '100%', borderRadius: 8, padding: '6px 10px' }}
-                onClick={() => handleRoleSelect('user')}
-              >
-                Voter (Public User)
-              </button>
-              <button
-                className={`nav-link-btn ${user?.role === 'admin' ? 'active' : ''}`}
-                style={{ textAlign: 'left', width: '100%', borderRadius: 8, padding: '6px 10px' }}
-                onClick={() => handleRoleSelect('admin')}
-              >
-                Developer (Admin View)
-              </button>
-              <div style={{ borderTop: '1px solid var(--border-subtle)', margin: '4px 0' }} />
-              <button
-                className="nav-link-btn"
-                style={{ textAlign: 'left', width: '100%', borderRadius: 8, padding: '6px 10px', color: 'var(--color-danger)' }}
-                onClick={() => {
-                  logout();
-                  setShowRoleMenu(false);
-                }}
-              >
-                Sign Out
-              </button>
-            </div>
-          )}
+          {/* Settings & Profile Dropdown */}
+          <SettingsDropdown
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            onNavigateSettings={(subTab) => {
+              setShowSettings(false);
+              onNavigateSettings(subTab);
+            }}
+            onNavigateTab={(tab) => {
+              setShowSettings(false);
+              onTabChange(tab);
+            }}
+          />
         </div>
       </div>
     </header>

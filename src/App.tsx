@@ -9,6 +9,7 @@ import { PitchCatalog } from './views/VoterApp/PitchCatalog.tsx';
 import { BallotBox } from './views/VoterApp/BallotBox.tsx';
 import { PublicLeaderboard } from './views/VoterApp/PublicLeaderboard.tsx';
 import { DevWorkbench } from './views/DevWorkbench/DevWorkbench.tsx';
+import { SettingsPage, SettingsSubTab } from './views/Settings/SettingsPage.tsx';
 import {
   useActiveRound,
   useRoundEntries,
@@ -31,6 +32,7 @@ const queryClient = new QueryClient({
 const MainDashboardLayout: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTabId>('overview');
+  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('account_info');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreatePitchOpen, setIsCreatePitchOpen] = useState(false);
 
@@ -112,6 +114,10 @@ const MainDashboardLayout: React.FC = () => {
       <Navbar
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        onNavigateSettings={(subTab) => {
+          if (subTab) setSettingsSubTab(subTab);
+          setActiveTab('settings');
+        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
@@ -198,6 +204,14 @@ const MainDashboardLayout: React.FC = () => {
             <DevWorkbench />
           </div>
         )}
+
+        {activeTab === 'settings' && (
+          <SettingsPage
+            initialSubTab={settingsSubTab}
+            onNavigateTab={setActiveTab}
+            onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+          />
+        )}
       </main>
 
       {/* Submit Pitch Modal */}
@@ -216,13 +230,22 @@ const MainDashboardLayout: React.FC = () => {
         style={{
           borderTop: '1px solid var(--border-subtle)',
           padding: '16px 32px',
-          textAlign: 'center',
           color: 'var(--text-light)',
           fontSize: '11px',
           background: 'var(--bg-card)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 10,
         }}
       >
-        <span className="mono">@platform/vote-ui</span> | Connected to @platform/internal-logic and vote-api
+        <div>
+          <span className="mono">@platform/vote-ui</span> | Connected to @platform/internal-logic and vote-api
+        </div>
+        <div className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+          Build v1.0.0-rc4 (2026.09.13)
+        </div>
       </footer>
     </div>
   );

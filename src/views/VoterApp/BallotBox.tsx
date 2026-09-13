@@ -1,6 +1,7 @@
 import React from 'react';
 import { VotingEntry, StoredBallotRecord } from '../../hooks/useVotingApi.ts';
 import { validate_ballot, Ballot } from '@platform/internal-logic';
+import { useAuth } from '../../context/AuthContext.tsx';
 
 interface BallotBoxProps {
   entries: VotingEntry[];
@@ -25,6 +26,7 @@ export const BallotBox: React.FC<BallotBoxProps> = ({
   onSubmitBallot,
   voterId,
 }) => {
+  const { isBarred } = useAuth();
   const getEntryTitle = (id: string) => entries.find((e) => e.id === id)?.title || id;
 
   // Build ballot object to test validation rules in real time
@@ -56,6 +58,12 @@ export const BallotBox: React.FC<BallotBoxProps> = ({
         )}
       </div>
 
+      {isBarred && (
+        <div className="callout callout-danger" style={{ marginBottom: 14 }}>
+          <strong>Account Barred:</strong> Your account has accumulated 3 warnings and is barred from participating in active voting rounds.
+        </div>
+      )}
+
       {/* 3 Ranked Slots */}
       <div className="ballot-slots">
         {/* Rank 1 */}
@@ -69,6 +77,7 @@ export const BallotBox: React.FC<BallotBoxProps> = ({
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => onClearSlot(1)}
+                disabled={isBarred}
               >
                 Remove
               </button>
@@ -91,6 +100,7 @@ export const BallotBox: React.FC<BallotBoxProps> = ({
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => onClearSlot(2)}
+                disabled={isBarred}
               >
                 Remove
               </button>
@@ -113,6 +123,7 @@ export const BallotBox: React.FC<BallotBoxProps> = ({
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => onClearSlot(3)}
+                disabled={isBarred}
               >
                 Remove
               </button>
@@ -137,7 +148,9 @@ export const BallotBox: React.FC<BallotBoxProps> = ({
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          {isComplete && validation.isValid ? (
+          {isBarred ? (
+            <span className="text-danger font-bold">Account barred from submitting ballots.</span>
+          ) : isComplete && validation.isValid ? (
             <span className="text-success font-bold">All 6 credits allocated (Anti-stacking verified)</span>
           ) : (
             <span>Must select 3 unique pitches to cast your ballot.</span>
@@ -146,11 +159,11 @@ export const BallotBox: React.FC<BallotBoxProps> = ({
 
         <button
           className="btn btn-primary"
-          disabled={!validation.isValid || isSubmitting}
+          disabled={!validation.isValid || isSubmitting || isBarred}
           onClick={onSubmitBallot}
           style={{ padding: '10px 24px', fontSize: '14px' }}
         >
-          {isSubmitting ? 'Casting Ballot...' : myBallot ? 'Update My Ballot' : 'Cast 3-2-1 Ballot'}
+          {isBarred ? 'Account Barred' : isSubmitting ? 'Casting Ballot...' : myBallot ? 'Update My Ballot' : 'Cast 3-2-1 Ballot'}
         </button>
       </div>
     </div>

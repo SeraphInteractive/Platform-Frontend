@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSubmitEntry } from '../hooks/useVotingApi.ts';
+import { useAuth } from '../context/AuthContext.tsx';
 
 interface CreatePitchModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
   onClose,
   onCreated,
 }) => {
+  const { isBarred } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +26,10 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isBarred) {
+      setError('Your account is barred from submitting scene pitches.');
+      return;
+    }
     if (!title.trim()) {
       setError('Pitch title is required.');
       return;
@@ -99,6 +105,12 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
           </button>
         </div>
 
+        {isBarred && (
+          <div className="callout callout-danger" style={{ marginBottom: 14 }}>
+            <strong>Account Barred:</strong> Your account has accumulated 3 warnings and is barred from submitting new pitches.
+          </div>
+        )}
+
         {error && (
           <div className="callout callout-danger" style={{ marginBottom: 14 }}>
             {error}
@@ -116,6 +128,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
               placeholder="e.g. The Nether Fortress Ambush"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              disabled={isBarred}
               autoFocus
             />
           </div>
@@ -130,6 +143,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
               placeholder="Describe what happens in this scene, which characters appear, and why it fits the movie..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              disabled={isBarred}
               style={{ resize: 'vertical' }}
             />
           </div>
@@ -141,9 +155,9 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
             <button
               type="submit"
               className="btn-dark"
-              disabled={submitMutation.isPending}
+              disabled={submitMutation.isPending || isBarred}
             >
-              {submitMutation.isPending ? 'Submitting...' : 'Submit Pitch to Round'}
+              {isBarred ? 'Account Barred' : submitMutation.isPending ? 'Submitting...' : 'Submit Pitch to Round'}
             </button>
           </div>
         </form>
