@@ -2,7 +2,11 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, getApiBaseUrl } from '../api/client.ts';
 
-export type UserRole = 'user' | 'moderator' | 'admin';
+export type UserRole = 'user' | 'moderator' | 'admin' | 'supervisor';
+
+export function isStaff(role?: string): boolean {
+  return role === 'admin' || role === 'moderator' || role === 'supervisor';
+}
 
 export interface DiscordGuildPermissions {
   isGuildOwner?: boolean;
@@ -20,6 +24,15 @@ export interface UserProfile {
   warnings?: number;
   isBarred?: boolean;
 }
+
+export const DEV_DEFAULT_USER: UserProfile = {
+  id: 'dev_supervisor',
+  discordId: '215537065863938049',
+  discordUsername: 'Studio Supervisor (Dev)',
+  role: 'admin',
+  warnings: 0,
+  isBarred: false,
+};
 
 interface AuthContextType {
   token: string | null;
@@ -209,7 +222,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         warnings,
         isBarred,
       }
-    : null;
+    : DEV_DEFAULT_USER;
 
   const addWarning = () => {
     setWarnings((prev) => {

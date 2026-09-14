@@ -40,12 +40,12 @@ const STORAGE_KEYS = {
 } as const;
 
 const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'light',
+  theme: 'dark',
   fontSize: 13,
   compactness: 'normal',
   highContrast: false,
   reducedMotion: false,
-  soundEffects: true,
+  soundEffects: false,
   pushNotifications: false,
 };
 
@@ -62,12 +62,12 @@ function getInitialSettings(): UserSettings {
     const savedPush = localStorage.getItem(STORAGE_KEYS.pushNotifications);
 
     return {
-      theme: savedTheme === 'dark' ? 'dark' : 'light',
-      fontSize: savedFontSize ? Math.max(11, Math.min(28, parseInt(savedFontSize, 10) || 13)) : 13,
-      compactness: (savedCompactness as AppDensity) || 'normal',
+      theme: savedTheme === 'light' ? 'light' : 'dark',
+      fontSize: savedFontSize ? parseInt(savedFontSize, 10) : DEFAULT_SETTINGS.fontSize,
+      compactness: (savedCompactness as AppDensity) || DEFAULT_SETTINGS.compactness,
       highContrast: savedHighContrast === 'true',
       reducedMotion: savedReducedMotion === 'true',
-      soundEffects: savedSounds !== 'false',
+      soundEffects: savedSounds === 'true',
       pushNotifications: savedPush === 'true',
     };
   } catch {
@@ -89,7 +89,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     if (settings.theme === 'dark') {
       document.documentElement.setAttribute('data-theme', 'dark');
     } else {
-      document.documentElement.removeAttribute('data-theme');
+      document.documentElement.setAttribute('data-theme', 'light');
     }
     localStorage.setItem(STORAGE_KEYS.theme, settings.theme);
 

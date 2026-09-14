@@ -8,13 +8,16 @@ import { CreatePitchModal } from './components/CreatePitchModal.tsx';
 import { CreateRoundModal } from './components/CreateRoundModal.tsx';
 import { BlazeTransitionOverlay, type BlazeTransitionRef } from './components/BlazeTransitionOverlay.tsx';
 import { LandingPage } from './views/Landing/LandingPage.tsx';
-import { OverviewDashboard } from './views/Dashboard/OverviewDashboard.tsx';
-import { PitchCatalog } from './views/VoterApp/PitchCatalog.tsx';
-import { BallotBox } from './views/VoterApp/BallotBox.tsx';
+import { VotePage } from './views/VoterApp/VotePage.tsx';
 import { PublicLeaderboard } from './views/VoterApp/PublicLeaderboard.tsx';
+import { GrabBoxPage } from './views/GrabBox/GrabBoxPage.tsx';
+import { ProgressPage } from './views/Progress/ProgressPage.tsx';
 import { DevWorkbench } from './views/DevWorkbench/DevWorkbench.tsx';
 import { SettingsPage, SettingsSubTab } from './views/Settings/SettingsPage.tsx';
 import { DocsPage, DocsSectionId } from './views/Docs/DocsPage.tsx';
+import { PrivacyPage } from './views/Legal/PrivacyPage.tsx';
+import { TermsPage } from './views/Legal/TermsPage.tsx';
+import { GuidelinesPage } from './views/Legal/GuidelinesPage.tsx';
 import {
   useActiveRound,
   useVotingRounds,
@@ -24,7 +27,6 @@ import {
   useCastBallot,
   type VotingRound,
 } from './hooks/useVotingApi.ts';
-import { sounds } from './utils/soundEffects.ts';
 
 // TanStack Query client with real-time polling defaults
 const queryClient = new QueryClient({
@@ -90,20 +92,29 @@ const MainDashboardLayout: React.FC = () => {
 
   const castBallotMutation = useCastBallot(currentRoundId);
 
-  // Rank assignment handler ensuring uniqueness across the 3 slots
+  // Rank assignment handler with bidirectional swapping and rearrange support
   const handleSelectRank = (rank: 1 | 2 | 3, entryId: string) => {
-    if (rank === 1) {
-      if (rank2 === entryId) setRank2('');
-      if (rank3 === entryId) setRank3('');
-      setRank1(entryId);
-    } else if (rank === 2) {
-      if (rank1 === entryId) setRank1('');
-      if (rank3 === entryId) setRank3('');
-      setRank2(entryId);
-    } else if (rank === 3) {
-      if (rank1 === entryId) setRank1('');
-      if (rank2 === entryId) setRank2('');
-      setRank3(entryId);
+    const sourceSlot: 1 | 2 | 3 | null =
+      rank1 === entryId ? 1 : rank2 === entryId ? 2 : rank3 === entryId ? 3 : null;
+
+    if (sourceSlot === rank) return;
+
+    const currentTargetOccupant = rank === 1 ? rank1 : rank === 2 ? rank2 : rank3;
+
+    if (sourceSlot) {
+      // Swapping between slots: target gets entryId, source gets current target occupant
+      if (rank === 1) setRank1(entryId);
+      else if (rank === 2) setRank2(entryId);
+      else if (rank === 3) setRank3(entryId);
+
+      if (sourceSlot === 1) setRank1(currentTargetOccupant);
+      else if (sourceSlot === 2) setRank2(currentTargetOccupant);
+      else if (sourceSlot === 3) setRank3(currentTargetOccupant);
+    } else {
+      // Direct assignment from pool into slot
+      if (rank === 1) setRank1(entryId);
+      else if (rank === 2) setRank2(entryId);
+      else if (rank === 3) setRank3(entryId);
     }
   };
 
@@ -122,12 +133,10 @@ const MainDashboardLayout: React.FC = () => {
         rank2,
         rank3,
       });
-      sounds.playLevelUp();
-      setBallotSuccessMessage('Your ballot was successfully recorded in the live pool.');
+      setBallotSuccessMessage('Your vote was successfully recorded in the live pool.');
       setTimeout(() => setBallotSuccessMessage(null), 5000);
     } catch (err: unknown) {
-      sounds.playReset();
-      alert(`Failed to cast ballot: ${err instanceof Error ? err.message : String(err)}`);
+      alert(`Failed to cast vote: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
@@ -147,9 +156,12 @@ const MainDashboardLayout: React.FC = () => {
     });
   };
 
+  const isHomePage = activeTab === 'landing';
+  const isBallotPage = activeTab === 'ballot';
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Top Navbar with role-based tabs, theme toggle, and profile */}
+    <div className={`app-root-layout ${isHomePage ? 'layout-homepage' : 'layout-with-sidebar'}`}>
+      {/* Dynamic Navbar: top floating pill on Home, left vertical icon rail on all other views */}
       <Navbar
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -161,8 +173,8 @@ const MainDashboardLayout: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="dashboard-container" style={{ flex: 1 }}>
-        <div key={activeTab} className="page-view-wrapper">
+      <main className={`dashboard-container ${isHomePage ? 'container-homepage' : 'container-sidebar'}`}>
+        <div key={activeTab} className={`page-view-wrapper ${isBallotPage ? 'page-non-scroll' : 'page-scrollable'}`}>
           {activeTab === 'landing' && (
             <LandingPage
               activeRound={currentRound}
@@ -187,75 +199,28 @@ const MainDashboardLayout: React.FC = () => {
             />
           )}
 
-          {activeTab === 'overview' && (
-            <OverviewDashboard
-              onNavigateTab={handleTabChange}
-              onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
-              onSelectEntryForVote={(id) => {
-                if (!rank1) setRank1(id);
-                else if (!rank2) setRank2(id);
-                else if (!rank3) setRank3(id);
-                else setRank1(id);
-                handleTabChange('ballot');
-              }}
-            />
-          )}
-
           {activeTab === 'ballot' && (
-            <div className="tab-content-area">
+            <div className="tab-content-area" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
               {ballotSuccessMessage && (
-                <div className="callout callout-success" style={{ marginBottom: 16 }}>
+                <div className="callout callout-success" style={{ marginBottom: 12, flexShrink: 0 }}>
                   {ballotSuccessMessage}
                 </div>
               )}
 
-              {/* Ballot Slots */}
-              <BallotBox
+              {/* Vote Page with slot machine roller and drag-and-drop slots */}
+              <VotePage
+                activeRound={currentRound}
                 entries={entries}
                 rank1={rank1}
                 rank2={rank2}
                 rank3={rank3}
                 myBallot={myBallot}
                 isSubmitting={castBallotMutation.isPending}
+                onSelectRank={handleSelectRank}
                 onClearSlot={handleClearSlot}
                 onSubmitBallot={handleSubmitBallot}
+                onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
                 voterId={user?.id || user?.discordId || 'community_voter'}
-              />
-
-              {/* Proposal Catalog for easy ranking selection */}
-              <PitchCatalog
-                entries={entries}
-                activeRound={currentRound}
-                rounds={rounds}
-                selectedRoundId={currentRoundId}
-                onSelectRound={setSelectedRoundId}
-                selectedRank1={rank1}
-                selectedRank2={rank2}
-                selectedRank3={rank3}
-                onSelectRank={handleSelectRank}
-                onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
-                onOpenCreateRound={() => setIsCreateRoundOpen(true)}
-              />
-            </div>
-          )}
-
-          {activeTab === 'pitches' && (
-            <div className="tab-content-area">
-              <PitchCatalog
-                entries={entries}
-                activeRound={currentRound}
-                rounds={rounds}
-                selectedRoundId={currentRoundId}
-                onSelectRound={setSelectedRoundId}
-                selectedRank1={rank1}
-                selectedRank2={rank2}
-                selectedRank3={rank3}
-                onSelectRank={(r, id) => {
-                  handleSelectRank(r, id);
-                  handleTabChange('ballot');
-                }}
-                onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
-                onOpenCreateRound={() => setIsCreateRoundOpen(true)}
               />
             </div>
           )}
@@ -267,6 +232,14 @@ const MainDashboardLayout: React.FC = () => {
                 leaderboard={boardData?.leaderboard}
                 totalBallots={boardData?.totalBallots}
                 expectedPoints={boardData?.expectedPoints}
+                onSelectEntryForVote={(id) => {
+                  if (!rank1) setRank1(id);
+                  else if (!rank2) setRank2(id);
+                  else if (!rank3) setRank3(id);
+                  else setRank1(id);
+                  handleTabChange('ballot');
+                }}
+                onNavigateBallot={() => handleTabChange('ballot')}
               />
             </div>
           )}
@@ -281,9 +254,27 @@ const MainDashboardLayout: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'grabbox' && (
+            <div className="tab-content-area">
+              <GrabBoxPage onNavigateTab={handleTabChange} />
+            </div>
+          )}
+
+          {activeTab === 'progress' && (
+            <div className="tab-content-area">
+              <ProgressPage
+                onNavigateTab={handleTabChange}
+                onOpenCreateRound={() => setIsCreateRoundOpen(true)}
+              />
+            </div>
+          )}
+
           {activeTab === 'diagnostics' && (
             <div className="tab-content-area">
-              <DevWorkbench />
+              <DevWorkbench
+                onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+                onOpenCreateRound={() => setIsCreateRoundOpen(true)}
+              />
             </div>
           )}
 
@@ -293,6 +284,42 @@ const MainDashboardLayout: React.FC = () => {
               onNavigateTab={handleTabChange}
               onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
             />
+          )}
+
+          {activeTab === 'privacy' && (
+            <div className="tab-content-area">
+              <PrivacyPage
+                onNavigateTab={handleTabChange}
+                onNavigateDocs={(section) => {
+                  setDocsSection(section);
+                  handleTabChange('docs');
+                }}
+              />
+            </div>
+          )}
+
+          {activeTab === 'terms' && (
+            <div className="tab-content-area">
+              <TermsPage
+                onNavigateTab={handleTabChange}
+                onNavigateDocs={(section) => {
+                  setDocsSection(section);
+                  handleTabChange('docs');
+                }}
+              />
+            </div>
+          )}
+
+          {activeTab === 'guidelines' && (
+            <div className="tab-content-area">
+              <GuidelinesPage
+                onNavigateTab={handleTabChange}
+                onNavigateDocs={(section) => {
+                  setDocsSection(section);
+                  handleTabChange('docs');
+                }}
+              />
+            </div>
           )}
         </div>
       </main>
@@ -310,6 +337,7 @@ const MainDashboardLayout: React.FC = () => {
           handleTabChange('docs');
         }}
         onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+        onOpenCreateRound={() => setIsCreateRoundOpen(true)}
       />
 
       {/* Submit Proposal Modal */}
@@ -319,7 +347,7 @@ const MainDashboardLayout: React.FC = () => {
         onClose={() => setIsCreatePitchOpen(false)}
         onCreated={() => {
           setIsCreatePitchOpen(false);
-          setActiveTab('pitches');
+          handleTabChange('ballot');
         }}
       />
 
@@ -330,32 +358,36 @@ const MainDashboardLayout: React.FC = () => {
         onCreated={(newRoundId) => {
           setIsCreateRoundOpen(false);
           setSelectedRoundId(newRoundId);
-          setActiveTab('pitches');
+          handleTabChange('ballot');
         }}
       />
 
-      {/* Clean Light Footer */}
-      <footer
-        style={{
-          borderTop: '1px solid var(--border-subtle)',
-          padding: '16px 32px',
-          color: 'var(--text-light)',
-          fontSize: '11px',
-          background: 'var(--bg-card)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 10,
-        }}
-      >
-        <div>
-          <span className="mono">@platform/vote-ui</span> | Connected to @platform/internal-logic and vote-api
-        </div>
-        <div className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-          Build v1.0.0-rc4 (2026.09.13)
-        </div>
-      </footer>
+      {/* Clean Light Footer only on Homepage */}
+      {isHomePage && (
+        <footer
+          style={{
+            borderTop: '1px solid var(--border-subtle)',
+            padding: '16px 32px',
+            color: 'var(--text-light)',
+            fontSize: '11px',
+            background: 'var(--bg-card)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 10,
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div>
+            <span className="mono">@platform/vote-ui</span> | Connected to @platform/internal-logic and vote-api
+          </div>
+          <div className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+            Build v1.0.0-rc4 (2026.09.13)
+          </div>
+        </footer>
+      )}
     </div>
   );
 };

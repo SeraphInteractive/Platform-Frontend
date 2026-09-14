@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useCreateRound } from '../hooks/useVotingApi.ts';
-import { useAuth } from '../context/AuthContext.tsx';
+import { useAuth, isStaff } from '../context/AuthContext.tsx';
 
 interface CreateRoundModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export const CreateRoundModal: React.FC<CreateRoundModalProps> = ({
 
   const createRoundMutation = useCreateRound();
 
-  if (!isOpen || user?.role !== 'admin') return null;
+  if (!isOpen || !isStaff(user?.role)) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,10 +84,10 @@ export const CreateRoundModal: React.FC<CreateRoundModalProps> = ({
         <div className="card-header" style={{ marginBottom: 12 }}>
           <div>
             <div className="card-title" style={{ fontSize: '16px' }}>
-              Create Voting Round
+              Create Round
             </div>
             <div className="card-desc">
-              Form and configure a new community voting round (Admin Only).
+              Form and configure a new community voting round.
             </div>
           </div>
           <button

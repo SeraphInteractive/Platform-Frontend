@@ -154,7 +154,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleLogout = () => {
     logout();
-    onNavigateTab('overview');
+    onNavigateTab('landing');
   };
 
   return (

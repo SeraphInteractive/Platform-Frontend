@@ -5,20 +5,40 @@ import { useState, useEffect, useRef } from 'react';
  * Returns true when scrolling up or near the top of the page.
  * Returns false when scrolling down.
  */
-export function useScrollDirection(threshold: number = 8): boolean {
+export function useScrollDirection(
+  threshold: number = 8,
+  containerRef?: React.RefObject<HTMLElement | null>
+): boolean {
   const [isVisible, setIsVisible] = useState(true);
   const prevScrollY = useRef(0);
 
   useEffect(() => {
     let ticking = false;
 
-    const handleScroll = () => {
+    const getScrollY = (target?: EventTarget | null) => {
+      if (containerRef?.current) {
+        return containerRef.current.scrollTop;
+      }
+      if (target instanceof HTMLElement && target !== document.body && target !== document.documentElement) {
+        return target.scrollTop;
+      }
+      if (typeof window !== 'undefined') {
+        const scrollContainer = document.querySelector('.page-scrollable');
+        if (scrollContainer instanceof HTMLElement) {
+          return scrollContainer.scrollTop;
+        }
+        return window.scrollY;
+      }
+      return 0;
+    };
+
+    const handleScroll = (e: Event) => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
+          const currentScrollY = getScrollY(e.target);
 
           // Always visible near top of the page
-          if (currentScrollY < 60) {
+          if (currentScrollY < 40) {
             setIsVisible(true);
             prevScrollY.current = currentScrollY;
             ticking = false;
@@ -44,9 +64,13 @@ export function useScrollDirection(threshold: number = 8): boolean {
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [threshold]);
+    // Capture true intercepts scroll events from nested scroll containers like .page-scrollable
+    window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true });
+    };
+  }, [threshold, containerRef]);
 
   return isVisible;
 }

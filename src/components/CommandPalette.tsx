@@ -18,6 +18,7 @@ interface CommandPaletteProps {
   onNavigateTab: (tab: NavTabId) => void;
   onNavigateDocs?: (section: DocsSectionId) => void;
   onOpenCreatePitch: () => void;
+  onOpenCreateRound?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -26,6 +27,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onNavigateTab,
   onNavigateDocs,
   onOpenCreatePitch,
+  onOpenCreateRound,
 }) => {
   const { toggleTheme, settings, setSoundEffects } = useSettings();
   const [query, setQuery] = useState('');
@@ -44,21 +46,23 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const commands: CommandItem[] = [
     // Navigation
     { id: 'nav-home', category: 'Navigation', title: 'Go to Home', hint: 'Landing Page', onSelect: () => onNavigateTab('landing') },
-    { id: 'nav-overview', category: 'Navigation', title: 'Go to Overview', hint: 'Live Metrics', onSelect: () => onNavigateTab('overview') },
     { id: 'nav-ballot', category: 'Navigation', title: 'Go to Ballot Box', hint: 'Cast 3-2-1 Vote', onSelect: () => onNavigateTab('ballot') },
-    { id: 'nav-pitches', category: 'Navigation', title: 'Browse Proposals', hint: 'All Pitches', onSelect: () => onNavigateTab('pitches') },
     { id: 'nav-leaderboard', category: 'Navigation', title: 'View Leaderboard', hint: 'Rankings', onSelect: () => onNavigateTab('leaderboard') },
     { id: 'nav-docs', category: 'Navigation', title: 'Open Documentation', hint: 'Tech Specs', onSelect: () => onNavigateTab('docs') },
+    { id: 'nav-grabbox', category: 'Navigation', title: 'Go to GrabBox', hint: '3D Shot Dispatcher', onSelect: () => onNavigateTab('grabbox') },
+    { id: 'nav-progress', category: 'Navigation', title: 'View Progress', hint: 'Roadmap & Ledger', onSelect: () => onNavigateTab('progress') },
+    { id: 'nav-diagnostics', category: 'Navigation', title: 'Developer Terminal', hint: 'Dashboard & Moderation', onSelect: () => onNavigateTab('diagnostics') },
     { id: 'nav-settings', category: 'Navigation', title: 'Settings', hint: 'Preferences', onSelect: () => onNavigateTab('settings') },
     
     // Actions
     { id: 'act-pitch', category: 'Actions', title: 'Submit Proposal', hint: 'New Pitch', onSelect: onOpenCreatePitch },
+    ...(onOpenCreateRound ? [{ id: 'act-round', category: 'Actions', title: 'Create Round', hint: 'New Voting Round', onSelect: onOpenCreateRound }] : []),
     { id: 'act-theme', category: 'Actions', title: 'Toggle Theme', hint: settings.theme === 'dark' ? 'Switch to Light' : 'Switch to Dark', onSelect: toggleTheme },
     { id: 'act-sound', category: 'Actions', title: 'Toggle Sound Effects', hint: settings.soundEffects ? 'Mute' : 'Unmute', onSelect: () => setSoundEffects(!settings.soundEffects) },
 
     // Docs Sections
     { id: 'doc-overview', category: 'Documentation', title: 'Docs: Architecture Overview', hint: 'Decentralized Cinema', onSelect: () => { onNavigateDocs ? onNavigateDocs('overview') : onNavigateTab('docs'); } },
-    { id: 'doc-backend', category: 'Documentation', title: 'Docs: Backend Specification', hint: 'AdonisJS & Postgres', onSelect: () => { onNavigateDocs ? onNavigateDocs('backend') : onNavigateTab('docs'); } },
+    { id: 'doc-backend', category: 'Documentation', title: 'Docs: Backend Specification', hint: 'AdonisJS & Postgres', onSelect: () => { onNavigateDocs ? onNavigateDocs('architecture') : onNavigateTab('docs'); } },
     { id: 'doc-math', category: 'Documentation', title: 'Docs: Mathematics & 6N Law', hint: 'Borda & Runoff', onSelect: () => { onNavigateDocs ? onNavigateDocs('mathematics') : onNavigateTab('docs'); } },
     { id: 'doc-sec', category: 'Documentation', title: 'Docs: Security & Anti-Raid', hint: 'Entropy Analysis', onSelect: () => { onNavigateDocs ? onNavigateDocs('security') : onNavigateTab('docs'); } },
     { id: 'doc-grab', category: 'Documentation', title: 'Docs: GrabBox Dispatcher', hint: 'Modular 3D Shots', onSelect: () => { onNavigateDocs ? onNavigateDocs('grabbox') : onNavigateTab('docs'); } },

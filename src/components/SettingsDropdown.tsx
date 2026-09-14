@@ -25,7 +25,7 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
   const handleLogout = () => {
     logout();
     onClose();
-    onNavigateTab('overview');
+    onNavigateTab('landing');
   };
 
   const avatarUrl = getDiscordAvatar(user);

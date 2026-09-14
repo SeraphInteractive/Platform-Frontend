@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { VotingEntry } from '../../hooks/useVotingApi.ts';
+import React from 'react';
+import { VotingEntry, getSubmitterAvatar } from '../../hooks/useVotingApi.ts';
 import { EntryScoreBreakdown } from '@platform/internal-logic';
-import { sounds } from '../../utils/soundEffects.ts';
+import { useScrollDirection } from '../../hooks/useScrollDirection.ts';
 
 interface PublicLeaderboardProps {
   entries: VotingEntry[];
   leaderboard?: EntryScoreBreakdown[];
   totalBallots?: number;
   expectedPoints?: number;
+  onSelectEntryForVote?: (entryId: string) => void;
+  onNavigateBallot?: () => void;
 }
 
 export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
@@ -15,110 +17,100 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
   leaderboard = [],
   totalBallots = 0,
   expectedPoints = 0,
+  onSelectEntryForVote,
+  onNavigateBallot,
 }) => {
-  const [showRunoffSim, setShowRunoffSim] = useState(false);
-  const getEntryTitle = (id: string) => entries.find((e) => e.id === id)?.title || id;
-  const getEntryCategory = (id: string) => entries.find((e) => e.id === id)?.category || 'Pitch';
+  const isHeaderVisible = useScrollDirection();
+  const [currentPage, setCurrentPage] = React.useState<number>(1);
+  const [pageSize, setPageSize] = React.useState<number>(25);
+  const getEntry = (id: string) => entries.find((e) => e.id === id);
 
-  const top1 = leaderboard[0];
-  const top2 = leaderboard[1];
-  const top3 = leaderboard[2];
+  // Full entries list sorted by score
+  const sortedItems = React.useMemo(() => {
+    if (leaderboard.length > 0) {
+      return leaderboard.map((item) => ({
+        ...item,
+        entry: getEntry(item.entryId),
+      }));
+    }
+    // Fallback if leaderboard not yet populated
+    return entries.map((e) => ({
+      entryId: e.id,
+      rawScore: 0,
+      rank1Count: 0,
+      rank2Count: 0,
+      rank3Count: 0,
+      entry: e,
+    }));
+  }, [leaderboard, entries]);
 
-  // Calculate vote shares and 50% majority threshold
-  const totalBordaSum = leaderboard.reduce((acc, item) => acc + item.rawScore, 0);
-  const top1Share = totalBordaSum > 0 && top1 ? Math.round((top1.rawScore / totalBordaSum) * 100) : 0;
-  const isMajorityWinner = top1Share > 50;
+  const top1 = sortedItems[0];
+  const top2 = sortedItems[1];
+  const top3 = sortedItems[2];
 
   return (
-    <div className="card" style={{ padding: '36px 40px', background: 'var(--bg-card)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-            Community Standings
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
+      {/* Header Banner with dynamic scroll appearance */}
+      <div
+        className={`card scroll-header-banner ${isHeaderVisible ? 'banner-visible' : 'banner-hidden'}`}
+        style={{ padding: '28px 36px', background: 'var(--bg-card)' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+              Community Standings
+            </div>
+            <h1 style={{ fontSize: '26px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', margin: 0 }}>
+              Leaderboard
+            </h1>
           </div>
-          <h2 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', margin: 0 }}>
-            Leaderboard
-          </h2>
-        </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <span className="badge badge-engine">
-            {totalBallots} Ballots
-          </span>
-          <span className="badge badge-success">
-            {expectedPoints} Points (6N Conserved)
-          </span>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => {
-              sounds.playClick();
-              setShowRunoffSim(!showRunoffSim);
-            }}
-          >
-            {showRunoffSim ? 'Standard View' : 'Runoff Analysis'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <span className="badge badge-engine">
+              {totalBallots} Ballots
+            </span>
+            <span className="badge badge-success">
+              {expectedPoints} Points
+            </span>
+            {onNavigateBallot && (
+              <button className="btn btn-primary btn-sm" onClick={onNavigateBallot}>
+                Cast Ballot
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 50% Majority Threshold Status Callout */}
-      {leaderboard.length > 0 && (
-        <div
-          className="white-card"
-          style={{
-            marginBottom: 24,
-            padding: '14px 20px',
-            background: isMajorityWinner ? 'rgba(34, 197, 94, 0.08)' : 'rgba(59, 130, 246, 0.08)',
-            border: `1px solid ${isMajorityWinner ? 'rgba(34, 197, 94, 0.3)' : 'rgba(59, 130, 246, 0.3)'}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 12,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="beacon-dot" style={{ background: isMajorityWinner ? '#22c55e' : '#3b82f6' }} />
-            <div>
-              <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
-                {isMajorityWinner
-                  ? 'Decisive Majority (>50%): Top candidate has secured outright consensus.'
-                  : 'Split Consensus (<50%): Meeting protocol requires Top 2 Runoff.'}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Leading Share: {top1Share}% | Threshold Required: &gt;50%
-              </div>
-            </div>
-          </div>
-
-          <span className="mono" style={{ fontSize: '12px', fontWeight: 800, color: 'var(--accent-blue)' }}>
-            |Z| &gt; 1.96 Validated
-          </span>
-        </div>
-      )}
-
-      {/* 3D Visual Podium for Top 3 */}
-      {leaderboard.length >= 2 && (
+      {/* Top 3 Visual Podium */}
+      {sortedItems.length >= 2 && (
         <div className="podium-container">
           {/* 2nd Place Silver */}
           {top2 && (
             <div className="podium-card" style={{ order: 1 }}>
               <div style={{ marginBottom: 12 }}>
                 <span className="slot-badge slot-rank-2">2ND PLACE</span>
-                <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-main)', marginTop: 6 }}>
-                  {getEntryTitle(top2.entryId)}
+                <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-main)', marginTop: 8 }}>
+                  {top2.entry?.title || top2.entryId}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {getEntryCategory(top2.entryId)}
+                  By {top2.entry?.submitterUsername || 'Creator'}
                 </div>
               </div>
+
+              {top2.entry?.mediaUrl && (
+                <div style={{ width: '100%', height: 100, borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+                  <img
+                    src={top2.entry.mediaUrl}
+                    alt={top2.entry.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+              )}
+
               <div className="podium-pillar podium-pillar-silver">
                 <span className="mono text-silver" style={{ fontSize: '28px', fontWeight: 900 }}>#2</span>
-                <span className="mono" style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)', marginTop: 4 }}>
+                <span className="mono" style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text-main)', marginTop: 4 }}>
                   {top2.rawScore} pts
-                </span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {top2.rank1Count} x 1st
                 </span>
               </div>
             </div>
@@ -129,20 +121,28 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
             <div className="podium-card" style={{ order: 2 }}>
               <div style={{ marginBottom: 12 }}>
                 <span className="slot-badge slot-rank-1">1ST PLACE LEADER</span>
-                <div style={{ fontWeight: 900, fontSize: '17px', color: 'var(--text-main)', marginTop: 6 }}>
-                  {getEntryTitle(top1.entryId)}
+                <div style={{ fontWeight: 900, fontSize: '17px', color: 'var(--text-main)', marginTop: 8 }}>
+                  {top1.entry?.title || top1.entryId}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {getEntryCategory(top1.entryId)}
+                  By {top1.entry?.submitterUsername || 'Creator'}
                 </div>
               </div>
+
+              {top1.entry?.mediaUrl && (
+                <div style={{ width: '100%', height: 110, borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+                  <img
+                    src={top1.entry.mediaUrl}
+                    alt={top1.entry.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+              )}
+
               <div className="podium-pillar podium-pillar-gold">
                 <span className="mono text-gold" style={{ fontSize: '36px', fontWeight: 900 }}>#1</span>
-                <span className="mono" style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text-main)', marginTop: 4 }}>
+                <span className="mono" style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-main)', marginTop: 4 }}>
                   {top1.rawScore} pts
-                </span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {top1.rank1Count} x 1st
                 </span>
               </div>
             </div>
@@ -153,20 +153,28 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
             <div className="podium-card" style={{ order: 3 }}>
               <div style={{ marginBottom: 12 }}>
                 <span className="slot-badge slot-rank-3">3RD PLACE</span>
-                <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-main)', marginTop: 6 }}>
-                  {getEntryTitle(top3.entryId)}
+                <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-main)', marginTop: 8 }}>
+                  {top3.entry?.title || top3.entryId}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {getEntryCategory(top3.entryId)}
+                  By {top3.entry?.submitterUsername || 'Creator'}
                 </div>
               </div>
+
+              {top3.entry?.mediaUrl && (
+                <div style={{ width: '100%', height: 90, borderRadius: 8, overflow: 'hidden', marginBottom: 10 }}>
+                  <img
+                    src={top3.entry.mediaUrl}
+                    alt={top3.entry.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+              )}
+
               <div className="podium-pillar podium-pillar-bronze">
                 <span className="mono text-bronze" style={{ fontSize: '24px', fontWeight: 900 }}>#3</span>
-                <span className="mono" style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)', marginTop: 4 }}>
+                <span className="mono" style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)', marginTop: 4 }}>
                   {top3.rawScore} pts
-                </span>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {top3.rank1Count} x 1st
                 </span>
               </div>
             </div>
@@ -174,130 +182,179 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
         </div>
       )}
 
-      {/* Runoff Simulation View */}
-      {showRunoffSim && top1 && top2 && (
-        <div
-          className="white-card"
-          style={{
-            marginBottom: 24,
-            padding: '24px',
-            background: 'var(--bg-card-muted)',
-            border: '2px solid var(--accent-blue)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span className="badge badge-engine">Simulated Top 2 Runoff Head-to-Head</span>
-            <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              Eliminating lower candidates
-            </span>
+      {/* Standings Table with Entry Details and Total Score */}
+      <div className="card" style={{ padding: '24px 28px', background: 'var(--bg-card)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-main)' }}>
+            Rankings
           </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
-            <div className="white-card" style={{ padding: '16px', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-gold)' }}>FINALIST A</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, marginTop: 4 }}>{getEntryTitle(top1.entryId)}</div>
-              <div className="mono" style={{ fontSize: '14px', fontWeight: 800, color: 'var(--accent-blue)', marginTop: 8 }}>
-                Current Score: {top1.rawScore} pts ({top1Share}% share)
-              </div>
-            </div>
-
-            <div className="white-card" style={{ padding: '16px', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-silver)' }}>FINALIST B</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, marginTop: 4 }}>{getEntryTitle(top2.entryId)}</div>
-              <div className="mono" style={{ fontSize: '14px', fontWeight: 800, color: 'var(--accent-blue)', marginTop: 8 }}>
-                Current Score: {top2.rawScore} pts ({totalBordaSum > 0 ? Math.round((top2.rawScore / totalBordaSum) * 100) : 0}% share)
-              </div>
-            </div>
+          <div className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            {sortedItems.length} Proposals
           </div>
         </div>
-      )}
 
-      {/* Full Leaderboard Table */}
-      <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th style={{ width: 80 }}>Rank</th>
-              <th>Proposal</th>
-              <th style={{ textAlign: 'right', width: 90 }}>1st (3p)</th>
-              <th style={{ textAlign: 'right', width: 90 }}>2nd (2p)</th>
-              <th style={{ textAlign: 'right', width: 90 }}>3rd (1p)</th>
-              <th style={{ width: 160 }}>Weight Distribution</th>
-              <th style={{ textAlign: 'right', width: 120 }}>Total Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaderboard.length === 0 ? (
+        <div className="table-wrap">
+          <table className="clean-table">
+            <thead>
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 48 }}>
-                  No ballots recorded yet. Cast your ballot to initiate standings.
-                </td>
+                <th style={{ width: 70 }}>Rank</th>
+                <th>Proposal</th>
+                <th>Creator</th>
+                <th style={{ textAlign: 'right', width: 140 }}>Total Score</th>
+                {onSelectEntryForVote && <th style={{ width: 120, textAlign: 'center' }}>Action</th>}
               </tr>
-            ) : (
-              leaderboard.map((item, index) => {
-                const totalN = (item.rank1Count * 3 + item.rank2Count * 2 + item.rank3Count * 1) || 1;
-                const w1 = ((item.rank1Count * 3) / totalN) * 100;
-                const w2 = ((item.rank2Count * 2) / totalN) * 100;
-                const w3 = ((item.rank3Count * 1) / totalN) * 100;
+            </thead>
+            <tbody>
+              {sortedItems.length === 0 ? (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 48 }}>
+                    No proposals in this round.
+                  </td>
+                </tr>
+              ) : (
+                sortedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((item, localIdx) => {
+                  const index = (currentPage - 1) * pageSize + localIdx;
+                  const entry = item.entry;
+                  return (
+                    <tr key={item.entryId}>
+                      <td
+                        className="mono"
+                        style={{
+                          fontWeight: 900,
+                          fontSize: '15px',
+                          color:
+                            index === 0
+                              ? 'var(--accent-gold)'
+                              : index === 1
+                              ? 'var(--accent-silver)'
+                              : index === 2
+                              ? 'var(--accent-bronze)'
+                              : 'var(--text-muted)',
+                        }}
+                      >
+                        #{index + 1}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                          {entry?.mediaUrl && (
+                            <img
+                              src={entry.mediaUrl}
+                              alt={entry.title}
+                              style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 6,
+                                objectFit: 'cover',
+                                border: '1px solid var(--border-subtle)',
+                                flexShrink: 0,
+                              }}
+                            />
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text-main)' }}>
+                              {entry?.title || item.entryId}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
+                              <span className="badge badge-engine" style={{ fontSize: '9px', padding: '1px 6px' }}>
+                                {entry?.category || 'Art Style'}
+                              </span>
+                              <span className="mono" style={{ fontSize: '10px', color: 'var(--text-light)' }}>
+                                {item.entryId}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <img
+                            src={getSubmitterAvatar(entry?.submitterUsername, entry?.submitterAvatar)}
+                            alt={entry?.submitterUsername || 'Creator'}
+                            style={{ width: 22, height: 22, borderRadius: '50%' }}
+                          />
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            {entry?.submitterUsername || 'Community Creator'}
+                          </span>
+                        </div>
+                      </td>
+                      <td
+                        className="mono"
+                        style={{
+                          textAlign: 'right',
+                          fontWeight: 900,
+                          fontSize: '16px',
+                          color: index === 0 ? 'var(--accent-green)' : 'var(--accent-blue)',
+                        }}
+                      >
+                        {item.rawScore} pts
+                      </td>
+                      {onSelectEntryForVote && (
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => onSelectEntryForVote(item.entryId)}
+                          >
+                            Vote
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
-                return (
-                  <tr key={item.entryId}>
-                    <td
-                      className="mono"
-                      style={{
-                        fontWeight: 900,
-                        fontSize: '15px',
-                        color:
-                          index === 0
-                            ? 'var(--accent-gold)'
-                            : index === 1
-                            ? 'var(--accent-silver)'
-                            : index === 2
-                            ? 'var(--accent-bronze)'
-                            : 'var(--text-muted)',
-                      }}
-                    >
-                      #{index + 1}
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 800, fontSize: '14px' }}>{getEntryTitle(item.entryId)}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        {getEntryCategory(item.entryId)}
-                      </div>
-                    </td>
-                    <td className="mono" style={{ textAlign: 'right', color: 'var(--accent-gold)', fontWeight: 700 }}>
-                      {item.rank1Count}
-                    </td>
-                    <td className="mono" style={{ textAlign: 'right', color: 'var(--accent-silver)', fontWeight: 700 }}>
-                      {item.rank2Count}
-                    </td>
-                    <td className="mono" style={{ textAlign: 'right', color: 'var(--accent-bronze)', fontWeight: 700 }}>
-                      {item.rank3Count}
-                    </td>
-                    <td>
-                      <div className="breakdown-bar">
-                        <div className="bar-rank1" style={{ width: `${w1}%` }} title={`1st place: ${item.rank1Count}`} />
-                        <div className="bar-rank2" style={{ width: `${w2}%` }} title={`2nd place: ${item.rank2Count}`} />
-                        <div className="bar-rank3" style={{ width: `${w3}%` }} title={`3rd place: ${item.rank3Count}`} />
-                      </div>
-                    </td>
-                    <td
-                      className="mono"
-                      style={{
-                        textAlign: 'right',
-                        fontWeight: 900,
-                        fontSize: '16px',
-                        color: 'var(--accent-blue)',
-                      }}
-                    >
-                      {item.rawScore} pts
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+        {/* Pagination Controls */}
+        {sortedItems.length > 10 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, sortedItems.length)} of {sortedItems.length}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Per page:</span>
+                <select
+                  className="select-field"
+                  style={{ fontSize: '11px', padding: '2px 6px' }}
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '11px', padding: '4px 10px' }}
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                Prev
+              </button>
+              <span className="mono" style={{ fontSize: '11px', color: 'var(--text-main)', padding: '0 4px' }}>
+                Page {currentPage} of {Math.max(1, Math.ceil(sortedItems.length / pageSize))}
+              </span>
+              <button
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '11px', padding: '4px 10px' }}
+                disabled={currentPage >= Math.ceil(sortedItems.length / pageSize)}
+                onClick={() => setCurrentPage((p) => Math.min(Math.ceil(sortedItems.length / pageSize), p + 1))}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

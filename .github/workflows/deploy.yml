@@ -1,0 +1,63 @@
+name: Auto Deploy Frontend Web App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-check:
+    name: Typecheck & Build Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Frontend
+        run: npm run build
+
+  deploy:
+    name: Deploy to Google Cloud VM
+    needs: build-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            echo "=================================================="
+            echo "🚀 Deploying Platform Frontend Web Application..."
+            echo "=================================================="
+
+            REPO_PATH="$HOME/Documents/vote-ui"
+            DEPLOY_PATH="${{ secrets.VM_DEPLOY_PATH || '$HOME/Documents/MCS-deployment' }}"
+
+            if [ -d "$REPO_PATH" ]; then
+              echo "Pulling and building frontend in $REPO_PATH..."
+              cd "$REPO_PATH"
+              git pull origin main
+              npm ci
+              npm run build
+            fi
+
+            if [ -d "$DEPLOY_PATH" ]; then
+              cd "$DEPLOY_PATH"
+              echo "Reloading web server reverse proxy..."
+              docker compose exec -T caddy caddy reload 2>/dev/null || docker compose restart caddy 2>/dev/null || true
+            fi
+
+            echo "✅ Frontend Web Application successfully built and deployed."

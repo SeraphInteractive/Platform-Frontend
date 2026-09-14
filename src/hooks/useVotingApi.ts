@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '../api/client.ts';
-import { useAuth } from '../context/AuthContext.tsx';
+import { useAuth, getDiscordAvatar } from '../context/AuthContext.tsx';
 import {
   aggregate_scores,
   analyze_raid_risk,
@@ -26,6 +26,8 @@ export interface VotingEntry {
   title: string;
   description: string;
   category?: string;
+  mediaUrl?: string | null;
+  status?: string;
   submitterId?: string;
   submitterUsername?: string;
   submitterAvatar?: string;
@@ -51,40 +53,123 @@ export interface StoredBallotRecord {
 const SEED_ROUNDS: VotingRound[] = [
   {
     id: 'round-01',
-    title: 'Round 1: Narrative & Scene Concepts',
-    category: 'Narrative',
-    description: 'Active community voting round for scene proposals and concept narratives.',
+    title: 'Round 1: Art Direction & Style',
+    category: 'Art Style',
+    description: 'Vote on the visual look and aesthetic for the movie. Pick your 3 favorite art style proposals.',
     status: 'ACTIVE',
     createdBy: 'SystemAdmin',
-    createdAt: '2026-09-13',
+    createdAt: '2026-09-14',
   },
   {
     id: 'round-02',
-    title: 'Round 2: Character Dynamics',
-    category: 'Characters',
+    title: 'Round 2: Story Arcs',
+    category: 'Story',
     description: 'Community voting round for character interactions and dialogue arcs.',
     status: 'DRAFT',
     createdBy: 'SystemAdmin',
-    createdAt: '2026-09-13',
+    createdAt: '2026-09-14',
   },
 ];
 
-// Exactly 1 initial test entry throughout the system
+// Exactly 6 test entries for the Art Style round
 const SEED_ENTRIES: VotingEntry[] = [
   {
     id: 'entry-001',
     roundId: 'round-01',
-    title: 'Initial Concept Proposal',
-    description: 'Reference proposal entry for the active community voting round.',
-    submitterUsername: 'SystemAdmin',
-    submitterId: 'admin-001',
-    createdAt: '2026-09-13',
+    title: 'Test Entry 1: Cel Shaded Anime',
+    category: 'Art Style',
+    description: 'Clean bold ink outlines with vibrant flat cell shading inspired by classic anime aesthetic.',
+    mediaUrl: '/images/stock_01.jpg',
+    status: 'approved',
+    submitterUsername: 'AlexCraft',
+    submitterAvatar: 'https://cdn.discordapp.com/embed/avatars/1.png',
+    submitterId: 'creator-001',
+    createdAt: '2026-09-14',
+  },
+  {
+    id: 'entry-002',
+    roundId: 'round-01',
+    title: 'Test Entry 2: Hyper-Realistic Raytraced',
+    category: 'Art Style',
+    description: 'Full path-traced lighting with soft ambient occlusion and volumetric atmospheric fog in Blender Cycles.',
+    mediaUrl: '/images/stock_02.jpg',
+    status: 'approved',
+    submitterUsername: 'SteveBuilder',
+    submitterAvatar: 'https://cdn.discordapp.com/embed/avatars/2.png',
+    submitterId: 'creator-002',
+    createdAt: '2026-09-14',
+  },
+  {
+    id: 'entry-003',
+    roundId: 'round-01',
+    title: 'Test Entry 3: Stylized Painterly Clay',
+    category: 'Art Style',
+    description: 'Hand-painted clay textures with subtle stop-motion jitter and warm storybook lighting.',
+    mediaUrl: '/images/stock_03.jpg',
+    status: 'approved',
+    submitterUsername: 'ClaySculptor',
+    submitterAvatar: 'https://cdn.discordapp.com/embed/avatars/3.png',
+    submitterId: 'creator-003',
+    createdAt: '2026-09-14',
+  },
+  {
+    id: 'entry-004',
+    roundId: 'round-01',
+    title: 'Test Entry 4: Classic Vanilla Pixel-Art',
+    category: 'Art Style',
+    description: 'Strict 16x16 pixel textures preserved on 3D geometry with enhanced depth and subtle bloom shaders.',
+    mediaUrl: '/textures/crying_obsidian.png',
+    status: 'approved',
+    submitterUsername: 'RetroGamer',
+    submitterAvatar: 'https://cdn.discordapp.com/embed/avatars/4.png',
+    submitterId: 'creator-004',
+    createdAt: '2026-09-14',
+  },
+  {
+    id: 'entry-005',
+    roundId: 'round-01',
+    title: 'Test Entry 5: Dark Moody Cinematic PBR',
+    category: 'Art Style',
+    description: 'Physically based rough stone, wet obsidian reflections, and high-contrast cinematic rim lighting.',
+    mediaUrl: '/images/stock_02.jpg',
+    status: 'approved',
+    submitterUsername: 'ShadowArtist',
+    submitterAvatar: 'https://cdn.discordapp.com/embed/avatars/5.png',
+    submitterId: 'creator-005',
+    createdAt: '2026-09-14',
+  },
+  {
+    id: 'entry-006',
+    roundId: 'round-01',
+    title: 'Test Entry 6: Vibrant Low-Poly Pastel',
+    category: 'Art Style',
+    description: 'Soft pastel color palettes with low-poly block bevels and warm golden-hour glowstone illumination.',
+    mediaUrl: '/images/stock_01.jpg',
+    status: 'approved',
+    submitterUsername: 'PastelDreamer',
+    submitterAvatar: 'https://cdn.discordapp.com/embed/avatars/0.png',
+    submitterId: 'creator-006',
+    createdAt: '2026-09-14',
   },
 ];
 
-const LOCAL_ROUNDS_STORAGE_KEY = 'mcs_local_rounds_v2';
-const LOCAL_BALLOTS_STORAGE_KEY = 'mcs_local_ballots_v2';
-const LOCAL_ENTRIES_STORAGE_KEY = 'mcs_local_entries_v2';
+export function getSubmitterAvatar(username?: string, avatarUrl?: string | null): string {
+  if (avatarUrl && (avatarUrl.startsWith('http') || avatarUrl.startsWith('data:'))) {
+    return avatarUrl;
+  }
+  if (username) {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+      hash = (hash + username.charCodeAt(i)) % 6;
+    }
+    return `https://cdn.discordapp.com/embed/avatars/${hash}.png`;
+  }
+  return 'https://cdn.discordapp.com/embed/avatars/0.png';
+}
+
+const LOCAL_ROUNDS_STORAGE_KEY = 'mcs_local_rounds_v3';
+const LOCAL_BALLOTS_STORAGE_KEY = 'mcs_local_ballots_v3';
+const LOCAL_ENTRIES_STORAGE_KEY = 'mcs_local_entries_v6';
 
 function getLocalStoredRounds(): VotingRound[] {
   if (typeof window === 'undefined') return SEED_ROUNDS;
@@ -136,17 +221,51 @@ function deleteLocalEntry(roundId: string, entryId: string): void {
   localStorage.setItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`, JSON.stringify(filtered));
 }
 
+function updateLocalEntryStatus(roundId: string, entryId: string, status: string): void {
+  const current = getLocalStoredEntries(roundId);
+  const found = current.find((e) => e.id === entryId);
+  if (found) {
+    found.status = status;
+    localStorage.setItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`, JSON.stringify(current));
+  }
+}
+
+const SEED_BALLOTS_ROUND_01: Ballot[] = [
+  // 18 ballots ranking entry-001 as 1st
+  ...Array.from({ length: 10 }, (_, i) => ({ voterId: `voter-seed-1-${i}`, rank1: 'entry-001', rank2: 'entry-002', rank3: 'entry-003', timestamp: 1726300000000 + i * 1000 })),
+  ...Array.from({ length: 5 }, (_, i) => ({ voterId: `voter-seed-2-${i}`, rank1: 'entry-001', rank2: 'entry-005', rank3: 'entry-002', timestamp: 1726305000000 + i * 1000 })),
+  ...Array.from({ length: 3 }, (_, i) => ({ voterId: `voter-seed-3-${i}`, rank1: 'entry-001', rank2: 'entry-003', rank3: 'entry-004', timestamp: 1726310000000 + i * 1000 })),
+  // 10 ballots ranking entry-002 as 1st
+  ...Array.from({ length: 6 }, (_, i) => ({ voterId: `voter-seed-4-${i}`, rank1: 'entry-002', rank2: 'entry-001', rank3: 'entry-005', timestamp: 1726315000000 + i * 1000 })),
+  ...Array.from({ length: 4 }, (_, i) => ({ voterId: `voter-seed-5-${i}`, rank1: 'entry-002', rank2: 'entry-003', rank3: 'entry-001', timestamp: 1726320000000 + i * 1000 })),
+  // 6 ballots ranking entry-003 as 1st
+  ...Array.from({ length: 4 }, (_, i) => ({ voterId: `voter-seed-6-${i}`, rank1: 'entry-003', rank2: 'entry-002', rank3: 'entry-004', timestamp: 1726325000000 + i * 1000 })),
+  ...Array.from({ length: 2 }, (_, i) => ({ voterId: `voter-seed-7-${i}`, rank1: 'entry-003', rank2: 'entry-005', rank3: 'entry-006', timestamp: 1726330000000 + i * 1000 })),
+  // 5 ballots ranking entry-005 as 1st
+  ...Array.from({ length: 3 }, (_, i) => ({ voterId: `voter-seed-8-${i}`, rank1: 'entry-005', rank2: 'entry-001', rank3: 'entry-002', timestamp: 1726335000000 + i * 1000 })),
+  ...Array.from({ length: 2 }, (_, i) => ({ voterId: `voter-seed-9-${i}`, rank1: 'entry-005', rank2: 'entry-002', rank3: 'entry-003', timestamp: 1726340000000 + i * 1000 })),
+  // 2 ballots ranking entry-004 as 1st
+  ...Array.from({ length: 2 }, (_, i) => ({ voterId: `voter-seed-10-${i}`, rank1: 'entry-004', rank2: 'entry-003', rank3: 'entry-006', timestamp: 1726345000000 + i * 1000 })),
+  // 1 ballot ranking entry-006 as 1st
+  { voterId: 'voter-seed-11-0', rank1: 'entry-006', rank2: 'entry-004', rank3: 'entry-003', timestamp: 1726350000000 },
+];
+
 function getLocalStoredBallots(roundId: string): Ballot[] {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === 'undefined') return roundId === 'round-01' ? SEED_BALLOTS_ROUND_01 : [];
   const raw = localStorage.getItem(`${LOCAL_BALLOTS_STORAGE_KEY}_${roundId}`);
   if (raw) {
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch {
       // fallback
     }
   }
-  return [];
+  const initial = roundId === 'round-01' ? SEED_BALLOTS_ROUND_01 : [];
+  if (initial.length > 0) {
+    localStorage.setItem(`${LOCAL_BALLOTS_STORAGE_KEY}_${roundId}`, JSON.stringify(initial));
+  }
+  return initial;
 }
 
 function saveLocalBallot(roundId: string, ballot: Ballot): void {
@@ -264,6 +383,22 @@ export function useLiveTelemetry(roundId: string, leaderboard: EntryScoreBreakdo
   });
 }
 
+// Fetch all ballots for live trajectory rendering
+export function useLiveBallots(roundId: string) {
+  return useQuery<Ballot[]>({
+    queryKey: ['rounds', roundId, 'ballots', 'all'],
+    queryFn: async () => {
+      try {
+        return await apiRequest<Ballot[]>(`/rounds/${roundId}/ballots`);
+      } catch {
+        return getLocalStoredBallots(roundId);
+      }
+    },
+    enabled: !!roundId,
+    refetchInterval: 3000,
+  });
+}
+
 // Mutation to cast a ballot
 export function useCastBallot(roundId: string) {
   const queryClient = useQueryClient();
@@ -303,7 +438,7 @@ export function useSubmitEntry(roundId: string) {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (payload: { title: string; description: string }) => {
+    mutationFn: async (payload: { title: string; description: string; mediaUrl?: string }) => {
       try {
         return await apiRequest<VotingEntry>(`/rounds/${roundId}/entries`, {
           method: 'POST',
@@ -316,8 +451,11 @@ export function useSubmitEntry(roundId: string) {
           roundId,
           title: payload.title,
           description: payload.description,
+          mediaUrl: payload.mediaUrl,
+          status: 'pending_review',
           submitterId: user?.id || 'community_creator',
           submitterUsername: user?.discordUsername || 'Community Creator',
+          submitterAvatar: getDiscordAvatar(user),
           createdAt: new Date().toISOString().split('T')[0],
         };
         saveLocalEntry(roundId, newEntry);
@@ -360,6 +498,30 @@ export function useCreateRound() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rounds'] });
+    },
+  });
+}
+
+// Supervisor / Admin Mutation: Update pitch / entry moderation status
+export function useUpdateEntryStatus(roundId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ entryId, status }: { entryId: string; status: 'approved' | 'rejected' | 'flagged' | 'pending_review' }) => {
+      try {
+        return await apiRequest(`/rounds/${roundId}/entries/${entryId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status }),
+        });
+      } catch {
+        updateLocalEntryStatus(roundId, entryId, status);
+        return { success: true, status };
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'entries'] });
+      queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'leaderboard'] });
+      queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'telemetry'] });
     },
   });
 }

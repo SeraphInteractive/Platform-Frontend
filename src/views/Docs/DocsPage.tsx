@@ -1,31 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { NavTabId } from '../../components/Navbar.tsx';
+import { useScrollDirection } from '../../hooks/useScrollDirection.ts';
+import { Footer } from '../../components/Footer.tsx';
 
 export type DocsSectionId =
   | 'overview'
-  | 'backend'
-  | 'mathematics'
-  | 'security'
-  | 'grabbox'
+  | 'tracks'
+  | 'terminology'
+  | 'voting'
+  | 'roles'
   | 'pipeline'
+  | 'grabbox'
+  | 'security'
+  | 'references'
+  | 'teams'
+  | 'legal'
+  | 'architecture'
+  | 'mathematics'
   | 'supervision'
   | 'discipline';
 
 interface DocsPageProps {
   initialSection?: DocsSectionId;
-  onNavigateTab: (tab: NavTabId) => void;
-  onOpenCreatePitch: () => void;
+  onNavigateTab?: (tab: NavTabId) => void;
+  onOpenCreatePitch?: () => void;
 }
 
 export const DocsPage: React.FC<DocsPageProps> = ({
   initialSection = 'overview',
   onNavigateTab,
 }) => {
+  const isHeaderVisible = useScrollDirection();
   const [activeSection, setActiveSection] = useState<DocsSectionId>(initialSection);
+  const [showToc, setShowToc] = useState(true);
+
+  const resolveTargetId = (id: DocsSectionId): string => {
+    switch (id) {
+      case 'teams': return 'tracks';
+      case 'architecture': return 'overview';
+      case 'mathematics': return 'voting';
+      case 'supervision': return 'roles';
+      case 'discipline': return 'security';
+      default: return id;
+    }
+  };
 
   const scrollToSection = (id: DocsSectionId) => {
     setActiveSection(id);
-    const element = document.getElementById(id);
+    const targetId = resolveTargetId(id);
+    const element = document.getElementById(targetId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -35,7 +58,8 @@ export const DocsPage: React.FC<DocsPageProps> = ({
     if (initialSection) {
       setActiveSection(initialSection);
       const timer = setTimeout(() => {
-        const element = document.getElementById(initialSection);
+        const targetId = resolveTargetId(initialSection);
+        const element = document.getElementById(targetId);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -44,525 +68,607 @@ export const DocsPage: React.FC<DocsPageProps> = ({
     }
   }, [initialSection]);
 
-  useEffect(() => {
-    const sectionIds: DocsSectionId[] = [
-      'overview',
-      'backend',
-      'mathematics',
-      'security',
-      'grabbox',
-      'pipeline',
-      'supervision',
-      'discipline',
-    ];
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id as DocsSectionId);
-            break;
-          }
-        }
-      },
-      {
-        rootMargin: '-80px 0px -60% 0px',
-        threshold: 0.1,
-      }
-    );
-
-    sectionIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, []);
+  const tocItems: { id: DocsSectionId; title: string }[] = [
+    { id: 'overview', title: 'Overview' },
+    { id: 'tracks', title: 'Tracks' },
+    { id: 'terminology', title: 'Terminology' },
+    { id: 'voting', title: 'Voting' },
+    { id: 'roles', title: 'Roles' },
+    { id: 'pipeline', title: 'Pipeline' },
+    { id: 'grabbox', title: 'GrabBox' },
+    { id: 'security', title: 'Security' },
+    { id: 'references', title: 'References' },
+  ];
 
   return (
-    <div className="container" style={{ maxWidth: 1400 }}>
-      {/* Header Banner */}
-      <div className="card" style={{ padding: '32px 36px', background: 'var(--bg-card)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 800, letterSpacing: '0.08em', color: 'var(--accent-green)', textTransform: 'uppercase', marginBottom: 6 }}>
-              Engineering Specifications
-            </div>
-            <h1 style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', margin: 0 }}>
-              Documentation
-            </h1>
+    <div style={{ width: '100%', maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Top Header Banner */}
+      <div
+        className={`card scroll-header-banner ${isHeaderVisible ? 'banner-visible' : 'banner-hidden'}`}
+        style={{ padding: '28px 36px', background: 'var(--bg-card)' }}
+      >
+        <div>
+          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
+            Technical Reference
           </div>
-
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => onNavigateTab('overview')}>
-              Overview
-            </button>
-            <button className="btn btn-secondary btn-sm" onClick={() => onNavigateTab('ballot')}>
-              Ballot Box
-            </button>
-          </div>
+          <h1 style={{ fontSize: '26px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', margin: 0 }}>
+            Documentation
+          </h1>
         </div>
       </div>
 
-      {/* Main Two-Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 24, alignItems: 'start' }}>
-        {/* Sticky Sidebar Navigation */}
-        <aside
-          style={{
-            position: 'sticky',
-            top: 24,
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '20px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            boxShadow: 'var(--shadow-card)',
-          }}
-        >
-          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-light)', padding: '4px 12px 8px', textTransform: 'uppercase' }}>
-            Sections
+      {/* Wikipedia Style Article Container */}
+      <div
+        className="card"
+        style={{
+          padding: '40px 48px',
+          background: 'var(--bg-card)',
+          color: 'var(--text-main)',
+          fontSize: '14px',
+          lineHeight: 1.75,
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        }}
+      >
+        {/* Wikipedia Header & Source */}
+        <div style={{ borderBottom: '1px solid var(--border-subtle)', paddingBottom: 12, marginBottom: 20 }}>
+          <div style={{ fontSize: '28px', fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text-main)' }}>
+            Consensus Platform Specification
+          </div>
+          <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 2 }}>
+            From Platform Reference, the community technical encyclopedia
+          </div>
+        </div>
+
+        {/* Lead Section + Infobox Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32, alignItems: 'start', marginBottom: 28 }}>
+          {/* Lead Text */}
+          <div>
+            <p style={{ margin: '0 0 14px 0' }}>
+              <strong>The Platform Voting and Production Architecture</strong> is a deterministic consensus system and distributed pipeline engineered for community-directed animated filmmaking. The platform implements a constrained 3-2-1 Borda count tallying protocol enforcing a strict mathematical 6N point conservation invariant, paired with Shannon entropy anti-raid telemetry, multi-vector AI content detection, and presigned object storage dispatchers to transform public consensus into verified 3D animation assets.
+            </p>
+            <p style={{ margin: '0 0 14px 0' }}>
+              The entire film lifecycle is structured across four sequential production phases: Phase 1 (Writing), Phase 2 (Pre-Vis), Phase 3 (Production), and Phase 4 (Post-Production), comprising 17 distinct sub-stages across five creative tracks and seven departments. Each stage operates under algorithmic verification and supervisor review to guarantee high creative velocity without central bottlenecking.
+            </p>
+            <p style={{ margin: 0 }}>
+              Platform algorithms are packaged into a zero-dependency internal logic engine (<code>@platform/internal-logic</code>), consumed uniformly by backend microservices and client interfaces to guarantee execution parity.
+            </p>
           </div>
 
-          {[
-            { id: 'overview', label: 'Architecture' },
-            { id: 'backend', label: 'Backend' },
-            { id: 'mathematics', label: 'Mathematics' },
-            { id: 'security', label: 'Security' },
-            { id: 'grabbox', label: 'GrabBox' },
-            { id: 'pipeline', label: 'Pipeline' },
-            { id: 'supervision', label: 'Supervision' },
-            { id: 'discipline', label: 'Discipline' },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => scrollToSection(item.id as DocsSectionId)}
+          {/* Wikipedia Infobox */}
+          <aside
+            style={{
+              background: 'var(--bg-card-muted)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              padding: '16px',
+              fontSize: '12px',
+              lineHeight: 1.5,
+            }}
+          >
+            <div
               style={{
-                textAlign: 'left',
-                padding: '9px 14px',
-                borderRadius: 'var(--radius-sm)',
-                border: 'none',
-                background: activeSection === item.id ? 'var(--bg-card-muted)' : 'transparent',
-                color: activeSection === item.id ? 'var(--text-main)' : 'var(--text-muted)',
-                fontWeight: activeSection === item.id ? 800 : 500,
-                fontSize: '13px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                borderLeft: activeSection === item.id ? '3px solid var(--accent-green)' : '3px solid transparent',
+                fontSize: '14px',
+                fontWeight: 800,
+                textAlign: 'center',
+                paddingBottom: 10,
+                borderBottom: '1px solid var(--border-subtle)',
+                marginBottom: 10,
+                color: 'var(--text-main)',
               }}
             >
-              {item.label}
-            </button>
-          ))}
-        </aside>
-
-        {/* Documentation Content Area */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-          {/* Section 1: Overview & Architecture */}
-          <section id="overview" className="card" style={{ padding: '36px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-blue)', textTransform: 'uppercase', marginBottom: 6 }}>
-              Distributed System
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, marginBottom: 16 }}>
-              Architecture
-            </h2>
-
-            <p style={{ color: 'var(--text-main)', fontSize: '15px', lineHeight: 1.8, marginBottom: 14, fontWeight: 500 }}>
-              The Community Minecraft Movie is organized into five specialized tracks: Story, Art Style, Builds, Voice Casting, and Animation. Anyone in the community can contribute ideas, vote on the best concepts, and help build the movie step by step.
-            </p>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.8, marginBottom: 20 }}>
-              Under the hood, the platform is engineered across 5 decoupled repositories. Calculation logic is isolated in a zero-dependency TypeScript engine with 100% test coverage, consumed by both the AdonisJS 6 backend and React frontend. Edge traffic is routed through Caddy 2 reverse proxies with real-time SSE streaming.
-            </p>
-
-            <div className="landing-metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 24 }}>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Logic Engine</div>
-                <div className="landing-metric-value mono" style={{ fontSize: '15px' }}>@platform/logic</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">API Gateway</div>
-                <div className="landing-metric-value mono" style={{ fontSize: '15px' }}>AdonisJS 6</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Database</div>
-                <div className="landing-metric-value mono" style={{ fontSize: '15px' }}>PostgreSQL 16</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Edge Proxy</div>
-                <div className="landing-metric-value mono" style={{ fontSize: '15px' }}>Caddy 2</div>
-              </div>
+              Platform Core
             </div>
 
-            <div className="white-card" style={{ background: 'var(--bg-card-muted)', border: '1px solid var(--border-subtle)', padding: '20px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>
-                Five Production Tracks
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Type</span>
+                <span style={{ fontWeight: 700 }}>Consensus Protocol</span>
               </div>
-              <ul style={{ paddingLeft: 18, color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.8 }}>
-                <li><strong>Story</strong>: Community pitches 1-paragraph summaries, overarching themes, and scene dialogues.</li>
-                <li><strong>Art Style</strong>: Leadership reference sets evaluated by community consensus to determine visual rendering targets.</li>
-                <li><strong>Builds & Sets</strong>: World environment designs and community build contests.</li>
-                <li><strong>Voice Casting</strong>: Up to 5 voice choices per character. Enforces invariant that no single voice actor holds multiple roles.</li>
-                <li><strong>Animation & Shots</strong>: Individual Blender 3D shot tasks managed through the GrabBox system.</li>
-              </ul>
-            </div>
-          </section>
-
-          {/* Section 2: Backend & Infrastructure */}
-          <section id="backend" className="card" style={{ padding: '36px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-blue)', textTransform: 'uppercase', marginBottom: 6 }}>
-              API & Storage
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, marginBottom: 16 }}>
-              Backend
-            </h2>
-
-            <p style={{ color: 'var(--text-main)', fontSize: '15px', lineHeight: 1.8, marginBottom: 14, fontWeight: 500 }}>
-              The server handles voting, user accounts, and file uploads securely in real time. When you cast a ballot or claim an animation shot, updates appear instantly across the community without page reloads.
-            </p>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.8, marginBottom: 20 }}>
-              The API runs Node.js 24 with AdonisJS 6. Database transactions are managed by Lucid ORM on PostgreSQL 16 with serializable isolation on ballot submission. Real-time updates use unbuffered Server-Sent Events (SSE) through Caddy reverse proxies, while Redis 7 provides in-memory rate limiting and leaderboard caching.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Real-Time Streaming</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  Server-Sent Events (SSE) broadcast live leaderboard shifts and telemetry events through unbuffered Caddy reverse proxy pipes.
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Tallying</span>
+                <span style={{ fontWeight: 700 }}>3-2-1 Borda Count</span>
               </div>
-
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Session & Auth</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  Discord OAuth2 authentication with cryptographic bearer tokens and multi-tier role verification on every mutation endpoint.
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Conservation</span>
+                <span className="mono" style={{ fontWeight: 700, color: 'var(--accent-green)' }}>6N Points</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Tracks</span>
+                <span style={{ fontWeight: 700 }}>5 Creative Tracks</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Roadmap</span>
+                <span style={{ fontWeight: 700 }}>Draft v20 (4 Phases)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Sub-Stages</span>
+                <span style={{ fontWeight: 700 }}>17 Discrete Steps</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Runtime</span>
+                <span style={{ fontWeight: 700 }}>Node.js 24 / TypeScript</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Database</span>
+                <span style={{ fontWeight: 700 }}>PostgreSQL 16</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Security</span>
+                <span style={{ fontWeight: 700 }}>Entropy & AI Radar</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Auth</span>
+                <span style={{ fontWeight: 700 }}>Discord OAuth2</span>
               </div>
             </div>
-
-            <div className="code-block" style={{ background: '#0b1120', borderRadius: '12px', padding: '18px', color: '#e2e8f0', fontSize: '12px', overflowX: 'auto' }}>
-              <pre className="mono">
-{`// Database Schema Entity Relations
-VotingRound (1) <----> (N) VotingEntry
-VotingRound (1) <----> (N) Ballot
-VotingRound (1) <----> (N) Shot
-User (1) <----> (N) Ballot
-User (1) <----> (N) Shot (Claimed)
-User (1) <----> (N) Submission`}
-              </pre>
-            </div>
-          </section>
-
-          {/* Section 3: Mathematics & Statistical Engine */}
-          <section id="mathematics" className="card" style={{ padding: '36px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase', marginBottom: 6 }}>
-              Voting Engine
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, marginBottom: 16 }}>
-              Mathematics
-            </h2>
-
-            <p style={{ color: 'var(--text-main)', fontSize: '15px', lineHeight: 1.8, marginBottom: 14, fontWeight: 500 }}>
-              Voting is simple: you pick your 1st, 2nd, and 3rd favorite ideas. Your top choice gets 3 points, second gets 2, and third gets 1. If no idea wins a clear majority of more than 50%, the contest reduces to the top 2 for a final runoff vote.
-            </p>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.8, marginBottom: 20 }}>
-              Scoring is governed by a 3-2-1 Borda variant strictly conserving 6N total points across N ballots. Empirical Bayesian shrinkage regularizes sparse candidate votes toward the round mean. Paired covariance matrices detect ballot competition, while standard error Z-scores (|Z| &lt; 1.96) flag statistical ties for tiered runoff.
-            </p>
-
-            <div className="white-card" style={{ padding: '20px', marginBottom: 20 }}>
-              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>
-                Conservation Invariant
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: 12 }}>
-                For any round with N verified ballots, the total points awarded across all entries strictly equals 6N:
-              </div>
-              <div className="mono" style={{ background: 'var(--bg-app)', padding: '12px 18px', borderRadius: '8px', fontWeight: 700, color: 'var(--accent-blue)', fontSize: '14px' }}>
-                Total Points = Sum(Scores) = 6 * N
-              </div>
-            </div>
-
-            <div className="white-card" style={{ padding: '20px', marginBottom: 20, background: 'var(--bg-card-muted)' }}>
-              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 8 }}>
-                Majority & Top 2 Runoff Rule
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                If in a 3+ way round no single candidate secures greater than 50% majority consensus, or if the Z-score rank separation standard error reveals a statistical tie (|Z| &lt; 1.96), the system automatically reduces the field to the Top 2 candidates and triggers a decisive head-to-head runoff re-vote.
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Bayesian Shrinkage</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  Prevents cold-start skew where a single 1st-place vote outranks high-volume candidates by regularizing towards global mean.
-                </div>
-              </div>
-
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Negative Covariance</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  Measures substitution effects and head-to-head competition across ballots using vectorized paired covariance matrices.
-                </div>
-              </div>
-
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Z-Score Separation</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  Evaluates score wobbles between adjacent ranks. When lead gap is below critical standard error, flags tiered runoff.
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 4: Security & Anti-Raid Protocol */}
-          <section id="security" className="card" style={{ padding: '36px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-danger)', textTransform: 'uppercase', marginBottom: 6 }}>
-              Integrity
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, marginBottom: 16 }}>
-              Security
-            </h2>
-
-            <p style={{ color: 'var(--text-main)', fontSize: '15px', lineHeight: 1.8, marginBottom: 14, fontWeight: 500 }}>
-              The system protects votes against spam, bots, and coordinated raid campaigns. Every community vote is weighed fairly and authentic consensus is preserved.
-            </p>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.8, marginBottom: 20 }}>
-              The Batman Protocol continuously computes Shannon rank entropy across incoming ballots alongside skew ratios (Rank 1 vs Ranks 2+3). Rapid vote velocity spikes trigger Z-score outlier alerts, categorizing incoming traffic into ORGANIC, ELEVATED_SKEW, or CRITICAL_RAID for moderation review.
-            </p>
-
-            <div className="landing-metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: 20 }}>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Skew Ratio</div>
-                <div className="landing-metric-value mono">Rank 1 / Ranks (2+3)</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Entropy Metric</div>
-                <div className="landing-metric-value mono">Shannon H(P)</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Velocity Z-Score</div>
-                <div className="landing-metric-value mono">d(Ballots)/dt</div>
-              </div>
-            </div>
-
-            <div className="white-card" style={{ padding: '18px', background: 'var(--bg-card-muted)' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Raid Severity Levels</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                <strong>ORGANIC</strong>: Natural spread across all 3 ranks with high Shannon entropy.<br />
-                <strong>ELEVATED_SKEW</strong>: Disproportionate 1st-place concentration exceeding threshold.<br />
-                <strong>CRITICAL_RAID</strong>: Coordinated surge with extreme top-heavy velocity; flagged for moderator audit.
-              </div>
-            </div>
-          </section>
-
-          {/* Section 5: GrabBox & Shot Claiming Engine */}
-          <section id="grabbox" className="card" style={{ padding: '36px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-gold)', textTransform: 'uppercase', marginBottom: 6 }}>
-              Production Logistics
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, marginBottom: 16 }}>
-              GrabBox
-            </h2>
-
-            <p style={{ color: 'var(--text-main)', fontSize: '15px', lineHeight: 1.8, marginBottom: 14, fontWeight: 500 }}>
-              When a scene wins the community vote, it turns into animation shots. Animators can claim 1 shot at a time, work on it in Blender, and submit it before the deadline so everyone gets a chance to participate.
-            </p>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.8, marginBottom: 20 }}>
-              The GrabBox engine enforces an invariant of 1 active claimed shot per user to prevent hoarding. Deadlines scale by difficulty (Easy 5d, Medium 7d, Hard 10d, Complex 14d) with 24-48h senior priority locks. A background ExpiryDaemon executes every 15 minutes to automatically reclaim abandoned shots.
-            </p>
-
-            <div className="white-card" style={{ marginBottom: 20, padding: '20px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 10 }}>Tier Deadlines & Windows</div>
-              <div className="table-wrap">
-                <table className="clean-table">
-                  <thead>
-                    <tr>
-                      <th>Difficulty Tier</th>
-                      <th>Duration</th>
-                      <th>Senior Priority Window</th>
-                      <th>Eligible Roles</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td><strong>Easy</strong></td>
-                      <td className="mono">5 Days</td>
-                      <td>None</td>
-                      <td>All Contributors</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Medium</strong></td>
-                      <td className="mono">7 Days</td>
-                      <td>None</td>
-                      <td>All Contributors</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Hard</strong></td>
-                      <td className="mono">10 Days</td>
-                      <td className="mono text-blue">24 Hours</td>
-                      <td>Senior Contributors first</td>
-                    </tr>
-                    <tr>
-                      <td><strong>Complex</strong></td>
-                      <td className="mono">14 Days</td>
-                      <td className="mono text-blue">48 Hours</td>
-                      <td>Senior Contributors first</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>1 Active Claim Invariant</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  A contributor may only hold 1 active claimed shot at a time, preventing hoarding and stalled deliverables.
-                </div>
-              </div>
-
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Automated Expiry Daemon</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  Runs every 15 minutes to reclaim abandoned claims past deadline, resetting shots to available pool.
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 6: Pipeline & Storage */}
-          <section id="pipeline" className="card" style={{ padding: '36px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-blue)', textTransform: 'uppercase', marginBottom: 6 }}>
-              Asset Ingestion
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, marginBottom: 16 }}>
-              Pipeline
-            </h2>
-
-            <p style={{ color: 'var(--text-main)', fontSize: '15px', lineHeight: 1.8, marginBottom: 14, fontWeight: 500 }}>
-              Animators submit their work directly from their web browser. You upload your Blender project files along with a video preview, so supervisors can review animations immediately.
-            </p>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.8, marginBottom: 20 }}>
-              The ingestion pipeline uses Cloudflare R2 / AWS S3 object storage with presigned PUT URLs generated by the API on demand. Deliverables require both an H.264 MP4 video preview for in-browser playback and a .blend source archive for final production compositing.
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Video Previews (.mp4)</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  H.264 video renders for immediate browser playback and supervisor desk review.
-                </div>
-              </div>
-
-              <div className="white-card" style={{ padding: '18px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Project Assets (.blend)</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                  Full Blender project files containing geometry, rigs, animations, and materials.
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 7: Supervision & Roles */}
-          <section id="supervision" className="card" style={{ padding: '36px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase', marginBottom: 6 }}>
-              Hierarchy
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, marginBottom: 16 }}>
-              Supervision
-            </h2>
-
-            <p style={{ color: 'var(--text-main)', fontSize: '15px', lineHeight: 1.8, marginBottom: 14, fontWeight: 500 }}>
-              Our team structure lets new community members participate right away while experienced animators take on harder shots. Supervisors review submissions, provide feedback, and promote contributors.
-            </p>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.8, marginBottom: 20 }}>
-              The platform enforces a 5-tier role hierarchy (Voter &lt; Contributor &lt; Senior Contributor &lt; Supervisor &lt; Admin). The supervisor review desk manages state machine transitions (approved vs revision_requested) and broadcasts automated webhook embeds to Discord.
-            </p>
-
-            <div className="white-card" style={{ padding: '20px', marginBottom: 20 }}>
-              <div className="mono" style={{ fontSize: '13px', lineHeight: 2, color: 'var(--text-main)' }}>
-                1. <strong>Voter</strong>: Browse proposals, participate in voting rounds.<br />
-                2. <strong>Contributor</strong>: Submit proposals, claim Easy/Medium shots.<br />
-                3. <strong>Senior Contributor</strong>: Claim Hard/Complex shots during priority windows.<br />
-                4. <strong>Supervisor</strong>: Review submissions, request revisions, promote contributors.<br />
-                5. <strong>Admin</strong>: Create rounds, manage global settings, override states.
-              </div>
-            </div>
-
-            <div className="white-card" style={{ padding: '18px', background: 'var(--bg-card-muted)' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, marginBottom: 6 }}>Dual Discord Webhooks</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                <strong>Public Webhook</strong>: Announcements for new voting rounds and fresh GrabBox drops.<br />
-                <strong>Supervisor Webhook</strong>: Alerts for submission reviews and senior promotions.
-              </div>
-            </div>
-          </section>
-
-          {/* Section 8: Discipline System */}
-          <section id="discipline" className="card" style={{ padding: '36px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--color-danger)', textTransform: 'uppercase', marginBottom: 6 }}>
-              Enforcement
-            </div>
-            <h2 style={{ fontSize: '22px', fontWeight: 900, marginBottom: 16 }}>
-              Discipline
-            </h2>
-
-            <p style={{ color: 'var(--text-main)', fontSize: '15px', lineHeight: 1.8, marginBottom: 14, fontWeight: 500 }}>
-              To keep our community safe and fun for everyone, we use a fair warning system. Respectful participation keeps your account in good standing with full voting and claiming access.
-            </p>
-
-            <p style={{ color: 'var(--text-muted)', fontSize: '14px', lineHeight: 1.8, marginBottom: 20 }}>
-              Discipline follows an audited 3-warning progression model: Warning 1 issues an advisory notice, Warning 2 introduces a 7-day cooldown on proposal creation, and Warning 3 triggers automatic account suspension and restriction from active rounds.
-            </p>
-
-            <div className="table-wrap">
-              <table className="clean-table">
-                <thead>
-                  <tr>
-                    <th>Warning Count</th>
-                    <th>Standing</th>
-                    <th>Sanction</th>
-                    <th>Privileges</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td className="mono">0</td>
-                    <td><span className="badge badge-success">Good</span></td>
-                    <td>None</td>
-                    <td>Full access</td>
-                  </tr>
-                  <tr>
-                    <td className="mono">1</td>
-                    <td><span className="badge badge-warning">Advisory</span></td>
-                    <td>Formal notice recorded</td>
-                    <td>Full access</td>
-                  </tr>
-                  <tr>
-                    <td className="mono">2</td>
-                    <td><span className="badge badge-warning">Probation</span></td>
-                    <td>7-day cooldown on proposal creation</td>
-                    <td>Voting permitted</td>
-                  </tr>
-                  <tr>
-                    <td className="mono">3+</td>
-                    <td><span className="badge badge-danger">Barred</span></td>
-                    <td>Account suspended</td>
-                    <td>All actions restricted</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+          </aside>
         </div>
+
+        {/* Wikipedia Table of Contents */}
+        <div
+          style={{
+            background: 'var(--bg-card-muted)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: '6px',
+            padding: '14px 20px',
+            width: 'fit-content',
+            minWidth: 280,
+            marginBottom: 36,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: '13px', fontWeight: 800 }}>Contents</span>
+            <button
+              onClick={() => setShowToc(!showToc)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--accent-blue)',
+                fontSize: '11px',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              [{showToc ? 'hide' : 'show'}]
+            </button>
+          </div>
+
+          {showToc && (
+            <ol style={{ margin: 0, paddingLeft: 20, fontSize: '13px', lineHeight: 1.8, color: 'var(--accent-blue)' }}>
+              {tocItems.map((item) => (
+                <li key={item.id}>
+                  <a
+                    href={`#${item.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      scrollToSection(item.id);
+                    }}
+                    style={{
+                      color: activeSection === item.id ? 'var(--accent-green)' : 'inherit',
+                      fontWeight: activeSection === item.id ? 700 : 400,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {item.title}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+
+        {/* Section 1: Overview */}
+        <section id="overview" style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6, margin: '0 0 14px 0' }}>
+            Overview
+          </h2>
+          <p>
+            Conventional animation production follows hierarchical, studio-dominated workflows where creative decisions are concentrated in executive committees. The Platform paradigm redistributes this authority across a structured community ecosystem through algorithmic consensus, transparent peer review, and task dispatching.
+          </p>
+          <p>
+            The ecosystem operates on three structural pillars:
+          </p>
+          <ul style={{ paddingLeft: 22, margin: '10px 0 14px 0' }}>
+            <li><strong>Consensus Engine:</strong> Mathematical voting rounds that prevent ballot stacking, filter out automated raids, and compute regularized leaderboards.</li>
+            <li><strong>Production Pipeline:</strong> A four-phase roadmap (Draft v20) coordinating story pitches, script development, animatics, 3D asset builds, animation shots, visual effects, and audio mastering.</li>
+            <li><strong>GrabBox Dispatcher:</strong> A modular asset ingestion and task distribution engine allocating 3D scene packages to community artists with deterministic lease locks.</li>
+          </ul>
+        </section>
+
+        {/* Section 2: Tracks */}
+        <section id="tracks" style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6, margin: '0 0 14px 0' }}>
+            Tracks
+          </h2>
+          <p>
+            Creative submissions and voting rounds are organized across five specialized production tracks:
+          </p>
+          <table className="clean-table" style={{ margin: '16px 0', fontSize: '13px' }}>
+            <thead>
+              <tr>
+                <th style={{ width: 160 }}>Track</th>
+                <th style={{ width: 180 }}>Supervisor</th>
+                <th>Scope & Deliverables</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Story Track</td>
+                <td>Story Supervisor</td>
+                <td>Screenplay pitches, narrative premises, scene beats, and character dialogue books.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Art Direction Track</td>
+                <td>Art Supervisor</td>
+                <td>Visual aesthetic targets, color keys, post-processing shaders, and texture lookdev.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Builds Track</td>
+                <td>Art Supervisor</td>
+                <td>Three-dimensional Minecraft voxel environments, structure schematics, and geometry setups.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Voice Casting Track</td>
+                <td>Audio Supervisor</td>
+                <td>Character audition stems, scratch dialogue takes, and character voice actor selection.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Animation Track</td>
+                <td>Animation Supervisor</td>
+                <td>3D GrabBox shot distribution, camera blocking, character keyframe animation, and rendering.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        {/* Section 3: Terminology */}
+        <section id="terminology" style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6, margin: '0 0 14px 0' }}>
+            Terminology
+          </h2>
+          <p>
+            The platform relies on standardized terminology across technical documentation, codebases, and supervisor devlogs:
+          </p>
+          <table className="clean-table" style={{ margin: '16px 0', fontSize: '13px' }}>
+            <thead>
+              <tr>
+                <th style={{ width: 180 }}>Term</th>
+                <th>Definition</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 700 }}>3-2-1 Borda Count</td>
+                <td>Positional voting system where each ballot allocates 3 points to Rank 1, 2 points to Rank 2, and 1 point to Rank 3 across three distinct options.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>6N Invariant</td>
+                <td>Mathematical conservation law stating that the sum of all proposal scores in a round with N valid ballots must equal exactly 6N points.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Bayesian Shrinkage</td>
+                <td>Empirical Bayes regularization pulling low-volume candidate scores toward the global mean to prevent cold-start rank distortion.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Shannon Entropy</td>
+                <td>Information entropy metric measuring ballot diversity across ranks to flag coordinated voting raids and bot clusters.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>GrabBox</td>
+                <td>Decentralized shot checkout engine providing scene archives, audio stems, and camera vectors with lease-locked delivery timers.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Animatic</td>
+                <td>Preliminary storyboard sequence timed to dialogue drafts, serving as the timing and layout blueprint for 3D animators.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Locked Picture</td>
+                <td>The final visual edit of the film where shot timing and cuts are frozen prior to color grading and master audio mixing.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Audio Stems</td>
+                <td>Isolated sound tracks (Dialogue, Foley, SFX, Score, Ambience) submitted for multi-track balancing by the Audio Supervisor.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        {/* Section 4: Voting */}
+        <section id="voting" style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6, margin: '0 0 14px 0' }}>
+            Voting
+          </h2>
+          <p>
+            Tallying uses a constrained 3-2-1 positional Borda count. Each ballot requires strict assignment of exactly three distinct candidates to ordinal ranks 1, 2, and 3.
+          </p>
+          <p>
+            Given candidate set C = &#123;c_1, c_2, ..., c_M&#125; and N valid ballots, let r_(i,k) denote the indicator variable that ballot k assigns candidate c_i to rank r in &#123;1, 2, 3&#125;. The aggregate raw score S_i for candidate c_i is defined by:
+          </p>
+          <div
+            className="mono"
+            style={{
+              background: 'var(--bg-card-muted)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '6px',
+              padding: '12px 18px',
+              margin: '14px 0',
+              fontSize: '13px',
+              color: 'var(--accent-blue)',
+            }}
+          >
+            S_i = \sum_(k=1)^N ( 3 * r_(i,k)^[1] + 2 * r_(i,k)^[2] + 1 * r_(i,k)^[3] )
+          </div>
+          <p>
+            Because each ballot distributes exactly 3 + 2 + 1 = 6 points, the sum of all candidate scores is strictly conserved:
+          </p>
+          <div
+            className="mono"
+            style={{
+              background: 'var(--bg-card-muted)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '6px',
+              padding: '12px 18px',
+              margin: '14px 0',
+              fontSize: '13px',
+              color: 'var(--accent-green)',
+            }}
+          >
+            Total Points = \sum_(i=1)^M S_i = 6N  (Conservation Invariant)
+          </div>
+          <p>
+            To prevent cold-start distortion where low-volume options with solitary high ranks outscore broad consensus choices, empirical Bayesian shrinkage is computed with prior confidence parameter C = 5.0 and global mean m = 6N / M:
+          </p>
+          <div
+            className="mono"
+            style={{
+              background: 'var(--bg-card-muted)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '6px',
+              padding: '12px 18px',
+              margin: '14px 0',
+              fontSize: '13px',
+              color: 'var(--accent-gold)',
+            }}
+          >
+            S_(i, regularized) = ( S_i + C * m ) / ( 1 + C / \max(1, count_i) )
+          </div>
+          <p>
+            When two top candidates exhibit score margins smaller than the standard error of negative rank covariance, the system flags the round for Tiered Runoff evaluation.
+          </p>
+        </section>
+
+        {/* Section 5: Roles */}
+        <section id="roles" style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6, margin: '0 0 14px 0' }}>
+            Roles
+          </h2>
+          <p>
+            Production governance is organized into four hierarchical tiers:
+          </p>
+          <ul style={{ paddingLeft: 22, margin: '10px 0 14px 0' }}>
+            <li><strong>Executive Leadership:</strong> Project Director and Platform Administrators oversee global deadlines, database integrity, and production milestone clearances.</li>
+            <li><strong>Department Supervisors:</strong> Specialized domain leads responsible for task sign-off:
+              <ul style={{ paddingLeft: 18, marginTop: 4 }}>
+                <li>Story Supervisor: Pitches, Outlines, Script Finals.</li>
+                <li>Art Supervisor: Visual Dev, Concept Art, Texture/Shading, Character Rigging.</li>
+                <li>Animation Supervisor: Storyboarding, Animatics, 3D Layout, Character Animation.</li>
+                <li>Post-Production Supervisor: Editorial, Visual Effects, Color Grading, Locked Picture.</li>
+                <li>Audio Supervisor: Voice Casting, Sound Design, Foley, Music Composition, Master Mix.</li>
+              </ul>
+            </li>
+            <li><strong>Beta Testers:</strong> Internal staff testers and tiered community testers validating new platform builds, voting mechanics, and API wrappers before public deployment.</li>
+            <li><strong>Contributors:</strong> Community artists, writers, modelers, animators, and voice actors participating in active rounds and GrabBox shot fulfillment.</li>
+          </ul>
+        </section>
+
+        {/* Section 6: Pipeline */}
+        <section id="pipeline" style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6, margin: '0 0 14px 0' }}>
+            Pipeline
+          </h2>
+          <p>
+            The complete film lifecycle is codified in the <strong>Roadmap Draft v20</strong> architecture, structured across four phases and 17 sub-stages:
+          </p>
+          <table className="clean-table" style={{ margin: '16px 0', fontSize: '13px' }}>
+            <thead>
+              <tr>
+                <th style={{ width: 100 }}>Phase</th>
+                <th style={{ width: 160 }}>Stage</th>
+                <th style={{ width: 160 }}>Supervisor</th>
+                <th>Deliverable</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 1</td>
+                <td>Pitches & Outlines</td>
+                <td>Story Supervisor</td>
+                <td>Approved Narrative Arc & Scene Beats</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 1</td>
+                <td>Script Final</td>
+                <td>Story Supervisor</td>
+                <td>Locked Screenplay & Dialogue Book</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 2</td>
+                <td>Visual Dev & Concepts</td>
+                <td>Art Supervisor</td>
+                <td>Environment & Character Color Keys</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 2</td>
+                <td>Storyboards</td>
+                <td>Animation Supervisor</td>
+                <td>Storyboard Panels & Shot Framing</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 2</td>
+                <td>Voice Auditions</td>
+                <td>Audio Supervisor</td>
+                <td>Cast Character Audio Stems</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 2</td>
+                <td>Animatic Final</td>
+                <td>Animation Supervisor</td>
+                <td>Locked Timing Animatic Reel</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 3</td>
+                <td>Art Assets & Models</td>
+                <td>Art Supervisor</td>
+                <td>glTF 3D Geometry & Material Shaders</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 3</td>
+                <td>Rigging</td>
+                <td>Art Supervisor</td>
+                <td>Deformation Rigs & Facial Setups</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 3</td>
+                <td>Layout & Blocking</td>
+                <td>Animation Supervisor</td>
+                <td>3D Camera Movement & Spatial Staging</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 3</td>
+                <td>Character Animation</td>
+                <td>Animation Supervisor</td>
+                <td>Keyframe Animation Takes</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 3</td>
+                <td>Lighting & Render</td>
+                <td>Animation Supervisor</td>
+                <td>Multi-Pass Render Sequences (EXR/PNG)</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 4</td>
+                <td>Visual Effects (VFX)</td>
+                <td>Post-Production Lead</td>
+                <td>Particle & Simulation Composites</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 4</td>
+                <td>Locked Picture</td>
+                <td>Post-Production Lead</td>
+                <td>Conformed Edit Master</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 4</td>
+                <td>Color Grade</td>
+                <td>Post-Production Lead</td>
+                <td>Graded Color Space Deliverable</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 4</td>
+                <td>Sound Design & Foley</td>
+                <td>Audio Supervisor</td>
+                <td>SFX Track Stems</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 4</td>
+                <td>Music Score</td>
+                <td>Audio Supervisor</td>
+                <td>Orchestral & Synth Soundtrack Stems</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Phase 4</td>
+                <td>Master Mix</td>
+                <td>Audio Supervisor</td>
+                <td>Finished Film Audio Master (5.1/Stereo)</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        {/* Section 7: GrabBox */}
+        <section id="grabbox" style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6, margin: '0 0 14px 0' }}>
+            GrabBox
+          </h2>
+          <p>
+            The <strong>GrabBox</strong> engine facilitates decentralized shot allocation. 3D animation tasks are published to the public board with difficulty ratings and lease durations:
+          </p>
+          <ul style={{ paddingLeft: 22, margin: '10px 0 14px 0' }}>
+            <li><strong>Tier 1 (Easy):</strong> 24-hour lease window for simple background animations or prop setups.</li>
+            <li><strong>Tier 2 (Medium):</strong> 48-hour lease window for standard single-character acting shots.</li>
+            <li><strong>Tier 3 (Hard):</strong> 72-hour lease window for multi-character interaction or fast action sequences.</li>
+            <li><strong>Tier 4 (Legendary):</strong> 120-hour lease window for complex climax scenes with dynamic camera shifts and simulations.</li>
+          </ul>
+          <p>
+            When an artist claims a task, the platform locks the shot to prevent duplicate effort. Deliverables are uploaded via presigned S3/R2 direct-to-storage URLs with SHA-256 integrity checksums. If the lease timer expires without a valid submission, the shot automatically returns to the open GrabBox pool.
+          </p>
+        </section>
+
+        {/* Section 8: Security */}
+        <section id="security" style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, borderBottom: '1px solid var(--border-subtle)', paddingBottom: 6, margin: '0 0 14px 0' }}>
+            Security
+          </h2>
+          <p>
+            Platform security incorporates automated anomaly detection, AI content moderation, and progressive disciplinary policies:
+          </p>
+          <table className="clean-table" style={{ margin: '16px 0', fontSize: '13px' }}>
+            <thead>
+              <tr>
+                <th style={{ width: 180 }}>Defense Vector</th>
+                <th style={{ width: 200 }}>Algorithm / Engine</th>
+                <th>Enforcement Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Raid Telemetry</td>
+                <td className="mono">Shannon Entropy + Velocity Z</td>
+                <td>Flags inorganic voting clusters (Entropy &lt; 0.85, |Z| &gt; 2.58) for desk audit.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>AI Content Scanner</td>
+                <td className="mono">Multi-Vector Perplexity Model</td>
+                <td>Inspects pitch texts and images; scores &gt; 70% probability route to moderation queue.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Scam Detection</td>
+                <td className="mono">Perceptual Image Hashing</td>
+                <td>Matches submitted attachments against known phishing databases.</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700 }}>Discipline Model</td>
+                <td className="mono">Three-Strike Escalation</td>
+                <td>Strike 1: Logged warning. Strike 2: 48h voting suspension. Strike 3: Permanent ban.</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        {/* Section 9: References */}
+        <section id="references" style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 16 }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 12px 0' }}>
+            References
+          </h2>
+          <ol style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.8, paddingLeft: 20, margin: 0 }}>
+            <li id="ref-1">
+              Borda, J. C. (1781). <a href="https://en.wikipedia.org/wiki/Borda_count" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'none' }}><em>Memoire sur les elections au scrutin</em></a>. Histoire de l'Academie Royale des Sciences, Paris.
+            </li>
+            <li id="ref-2">
+              Shannon, C. E. (1948). <a href="https://doi.org/10.1002/j.1538-7305.1948.tb01338.x" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'none' }}>"A Mathematical Theory of Communication"</a>. <em>Bell System Technical Journal</em>, 27(3), 379-423.
+            </li>
+            <li id="ref-3">
+              Gelman, A., Carlin, J. B., Stern, H. S., Dunson, D. B., Vehtari, A., & Rubin, D. B. (2013). <a href="http://www.stat.columbia.edu/~gelman/book/" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'none' }}><em>Bayesian Data Analysis</em> (3rd ed.)</a>. CRC Press.
+            </li>
+            <li id="ref-4">
+              Arrow, K. J. (1951). <a href="https://cowles.yale.edu/publications/monographs/12" target="_blank" rel="noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'none' }}><em>Social Choice and Individual Values</em></a>. John Wiley & Sons.
+            </li>
+          </ol>
+        </section>
       </div>
+
+      {/* Reusable Community Footer */}
+      <Footer onNavigateTab={onNavigateTab} onNavigateDocs={scrollToSection} />
     </div>
   );
 };
