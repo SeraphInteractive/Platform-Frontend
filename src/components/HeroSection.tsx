@@ -21,7 +21,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <span className="hero-subtitle">
           Active Round: {activeRound?.title || 'Community Pitches'}
         </span>
-        <h1 className="hero-title">Overview Panel</h1>
+        <h1 className="hero-title">Overview</h1>
       </div>
 
       {/* Layered glowing green card stack with working filter buttons */}
@@ -62,7 +62,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
-            <span>Consensus Insights</span>
+            <span>Insights</span>
           </div>
           <div className="insight-text">
             Active round has {totalBallots} verified ballots with 100% mathematical 6N point conservation.

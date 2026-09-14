@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth, UserRole } from '../../context/AuthContext.tsx';
+import { useAuth } from '../../context/AuthContext.tsx';
+import { useSettings, AppDensity } from '../../context/SettingsContext.tsx';
 import { useActiveRound, useMyBallot, useRoundEntries } from '../../hooks/useVotingApi.ts';
 import { NavTabId } from '../../components/Navbar.tsx';
 
@@ -9,7 +10,6 @@ export type SettingsSubTab =
   | 'account_security'
   | 'app_theme'
   | 'app_density'
-  | 'app_audio'
   | 'a11y_text_size'
   | 'a11y_compactness'
   | 'a11y_contrast'
@@ -18,6 +18,8 @@ export type SettingsSubTab =
   | 'media_videos'
   | 'act_ballot'
   | 'act_notifications'
+  | 'rules_lifecycle'
+  | 'rules_architecture'
   | 'legal_guidelines'
   | 'legal_terms'
   | 'dev_roles';
@@ -33,7 +35,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onNavigateTab,
   onOpenCreatePitch,
 }) => {
-  const { user, warnings = 0, isBarred = false, addWarning, clearWarnings, loginAsDevUser, logout } = useAuth();
+  const { user, warnings = 0, isBarred = false, logout } = useAuth();
+  const {
+    settings,
+    setTheme,
+    setFontSize,
+    setCompactness,
+    setHighContrast,
+    setReducedMotion,
+    setPushNotifications,
+    resetDefaults,
+    lastSavedAt,
+  } = useSettings();
+
   const { activeRound } = useActiveRound();
   const roundId = activeRound?.id || 'round-scene-pitch-42';
 
@@ -41,8 +55,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const { data: entries = [] } = useRoundEntries(roundId);
 
   const [activeSubTab, setActiveSubTab] = useState<SettingsSubTab>(initialSubTab);
+  const [saveFlash, setSaveFlash] = useState<boolean>(false);
+  const [notifMessage, setNotifMessage] = useState<string>('');
 
-  // Smooth scroll handler
   const scrollToSection = (subTab: SettingsSubTab) => {
     setActiveSubTab(subTab);
     const element = document.getElementById(subTab);
@@ -51,7 +66,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
-  // Scroll to initialSubTab on mount
   useEffect(() => {
     if (initialSubTab) {
       setActiveSubTab(initialSubTab);
@@ -65,7 +79,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   }, [initialSubTab]);
 
-  // Track active section as user scrolls (ScrollSpy)
+  useEffect(() => {
+    if (lastSavedAt) {
+      setSaveFlash(true);
+      const timer = setTimeout(() => setSaveFlash(false), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [lastSavedAt]);
+
   useEffect(() => {
     const sectionIds: SettingsSubTab[] = [
       'account_info',
@@ -73,7 +94,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       'account_security',
       'app_theme',
       'app_density',
-      'app_audio',
       'a11y_text_size',
       'a11y_compactness',
       'a11y_contrast',
@@ -82,6 +102,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       'media_videos',
       'act_ballot',
       'act_notifications',
+      'rules_lifecycle',
+      'rules_architecture',
       'legal_guidelines',
       'legal_terms',
       'dev_roles',
@@ -110,207 +132,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  // Dark mode setting
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mcs_theme') === 'dark';
-    }
-    return false;
-  });
-
-  // Text size setting (12px to 24px)
-  const [fontSize, setFontSize] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('mcs_font_size');
-      return stored ? parseInt(stored, 10) || 13 : 13;
-    }
-    return 13;
-  });
-
-  // UI Compactness setting ('cozy' | 'normal' | 'compact' | 'ultra-compact')
-  const [compactness, setCompactness] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mcs_compactness') || 'normal';
-    }
-    return 'normal';
-  });
-
-  // High contrast setting
-  const [highContrast, setHighContrast] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mcs_high_contrast') === 'true';
-    }
-    return false;
-  });
-
-  // Reduced motion setting
-  const [reducedMotion, setReducedMotion] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mcs_reduced_motion') === 'true';
-    }
-    return false;
-  });
-
-  // Push notifications setting
-  const [pushEnabled, setPushEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mcs_push_notifications') === 'true';
-    }
-    return false;
-  });
-
-  // Audio cues setting
-  const [soundFeedback, setSoundFeedback] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mcs_sound_feedback') === 'true';
-    }
-    return true;
-  });
-
-  const [notifStatus, setNotifStatus] = useState<string>('');
-  const [saveStatus, setSaveStatus] = useState<string>('');
-
-  // Sample media images associated with active user session
-  const [userImages] = useState([
-    {
-      id: 'img-1',
-      title: 'Nether Fortress Storyboard Concept',
-      url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80',
-      timestamp: 'Active Session',
-    },
-    {
-      id: 'img-2',
-      title: 'Ancient Builder Citadel Keyframe',
-      url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=80',
-      timestamp: 'Active Session',
-    },
-  ]);
-
-  // Sample media videos associated with active user session
-  const [userVideos] = useState([
-    {
-      id: 'vid-1',
-      title: 'Act 1 Opening Scene Animatic Test',
-      duration: '0:45',
-      format: 'MP4 1080p',
-      timestamp: 'Active Session',
-    },
-  ]);
-
-  // Apply dark mode to document
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
-  }, [isDarkMode]);
-
-  // Apply text scaling globally up to 24px
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${fontSize}px`;
-    localStorage.setItem('mcs_font_size', fontSize.toString());
-  }, [fontSize]);
-
-  // Apply UI compactness
-  useEffect(() => {
-    document.documentElement.setAttribute('data-compactness', compactness);
-    localStorage.setItem('mcs_compactness', compactness);
-  }, [compactness]);
-
-  // Apply high contrast
-  useEffect(() => {
-    if (highContrast) {
-      document.documentElement.setAttribute('data-high-contrast', 'true');
-    } else {
-      document.documentElement.removeAttribute('data-high-contrast');
-    }
-  }, [highContrast]);
-
-  // Apply reduced motion
-  useEffect(() => {
-    if (reducedMotion) {
-      document.documentElement.setAttribute('data-reduced-motion', 'true');
-    } else {
-      document.documentElement.removeAttribute('data-reduced-motion');
-    }
-  }, [reducedMotion]);
-
-  // Filter entries submitted by currently logged-in user in this session
   const myPitches = entries.filter((entry) => {
     if (!user) return false;
     return entry.submitterUsername === user.discordUsername || entry.submitterId === user.id;
   });
 
-  // Helper to get pitch title from ID
   const getPitchTitle = (id?: string) => {
     if (!id) return 'Unselected';
     const found = entries.find((e) => e.id === id);
     return found ? found.title : id;
   };
 
-  // Push notification permission handler
   const handlePushToggle = async (enabled: boolean) => {
-    if (!enabled) {
-      setPushEnabled(false);
-      localStorage.setItem('mcs_push_notifications', 'false');
-      setNotifStatus('');
-      return;
-    }
-
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'granted') {
-        setPushEnabled(true);
-        localStorage.setItem('mcs_push_notifications', 'true');
-        setNotifStatus('Active');
-      } else if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          setPushEnabled(true);
-          localStorage.setItem('mcs_push_notifications', 'true');
-          setNotifStatus('Active');
-          try {
-            new Notification('Ranked Voting Platform', {
-              body: 'Push notifications enabled. You will receive updates on ballot results.',
-            });
-          } catch {
-            // Some mobile browsers restrict notification constructor
-          }
-        } else {
-          setPushEnabled(false);
-          localStorage.setItem('mcs_push_notifications', 'false');
-          setNotifStatus('Permission denied');
-        }
-      } else {
-        setPushEnabled(false);
-        localStorage.setItem('mcs_push_notifications', 'false');
-        setNotifStatus('Blocked in browser');
-      }
+    const granted = await setPushNotifications(enabled);
+    if (enabled) {
+      setNotifMessage(granted ? 'Active' : 'Denied');
     } else {
-      setPushEnabled(true);
-      localStorage.setItem('mcs_push_notifications', 'true');
-      setNotifStatus('Enabled');
+      setNotifMessage('Disabled');
     }
-  };
-
-  // Explicitly persist settings to local storage
-  const handleSaveSettings = () => {
-    localStorage.setItem('mcs_theme', isDarkMode ? 'dark' : 'light');
-    localStorage.setItem('mcs_font_size', fontSize.toString());
-    localStorage.setItem('mcs_compactness', compactness);
-    localStorage.setItem('mcs_high_contrast', highContrast ? 'true' : 'false');
-    localStorage.setItem('mcs_reduced_motion', reducedMotion ? 'true' : 'false');
-    localStorage.setItem('mcs_push_notifications', pushEnabled ? 'true' : 'false');
-    localStorage.setItem('mcs_sound_feedback', soundFeedback ? 'true' : 'false');
-
-    setSaveStatus('Settings saved successfully');
-    setTimeout(() => {
-      setSaveStatus('');
-    }, 2500);
-  };
-
-  const handleRoleChange = (role: UserRole) => {
-    loginAsDevUser(role, role === 'admin' ? 'SteveDev' : 'CommunityVoter');
   };
 
   const handleLogout = () => {
@@ -321,221 +160,167 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   return (
     <div className="tab-content-area">
       {/* Page Header */}
-      <div className="card-header" style={{ marginBottom: 4 }}>
-        <div>
-          <div className="hero-subtitle">Application Configuration</div>
-          <h1 className="hero-title" style={{ fontSize: '26px' }}>Settings & Account Hub</h1>
+      <div className="card-header" style={{ marginBottom: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="tab-title">Settings</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              fontSize: '12px',
+              padding: '6px 14px',
+              borderRadius: '24px',
+              border: '1px solid var(--border-subtle)',
+              background: saveFlash ? 'var(--color-success-bg, rgba(16, 185, 129, 0.12))' : 'var(--bg-card-muted)',
+              color: saveFlash ? 'var(--color-success)' : 'var(--text-muted)',
+              fontWeight: 700,
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: saveFlash ? 'var(--color-success)' : 'var(--accent-green)',
+              }}
+            />
+            <span>{saveFlash ? 'Saved' : 'Auto-save'}</span>
+          </div>
+
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={resetDefaults}
+          >
+            Reset
+          </button>
         </div>
       </div>
 
+      {/* 2-Column Desktop Architecture Layout */}
       <div className="settings-page-layout">
-        {/* Hierarchical Subsection Sidebar matching Reference Tree */}
+        {/* Navigation Sidebar */}
         <aside className="settings-nav-card">
-          {/* Group 1: Account */}
           <div className="settings-sidebar-group">
-            <div className="settings-sidebar-header">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-              <span>Account</span>
-            </div>
+            <div className="settings-sidebar-header">Profile</div>
             <div className="settings-subsection-list">
               <button
                 className={`settings-subsection-item ${activeSubTab === 'account_info' ? 'active' : ''}`}
                 onClick={() => scrollToSection('account_info')}
               >
-                Account Info
+                Account
               </button>
               <button
                 className={`settings-subsection-item ${activeSubTab === 'account_standing' ? 'active' : ''}`}
                 onClick={() => scrollToSection('account_standing')}
               >
-                Account Standing
+                Standing
               </button>
               <button
                 className={`settings-subsection-item ${activeSubTab === 'account_security' ? 'active' : ''}`}
                 onClick={() => scrollToSection('account_security')}
               >
-                Password & Security
+                Security
               </button>
             </div>
           </div>
 
-          {/* Group 2: Appearance */}
           <div className="settings-sidebar-group">
-            <div className="settings-sidebar-header">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-              <span>Appearance</span>
-            </div>
+            <div className="settings-sidebar-header">Appearance</div>
             <div className="settings-subsection-list">
               <button
                 className={`settings-subsection-item ${activeSubTab === 'app_theme' ? 'active' : ''}`}
                 onClick={() => scrollToSection('app_theme')}
               >
-                Dark Mode & Theme
+                Theme
               </button>
               <button
                 className={`settings-subsection-item ${activeSubTab === 'app_density' ? 'active' : ''}`}
                 onClick={() => scrollToSection('app_density')}
               >
-                Theme Density
-              </button>
-              <button
-                className={`settings-subsection-item ${activeSubTab === 'app_audio' ? 'active' : ''}`}
-                onClick={() => scrollToSection('app_audio')}
-              >
-                Audio Feedback
+                Density
               </button>
             </div>
           </div>
 
-          {/* Group 3: Accessibility */}
           <div className="settings-sidebar-group">
-            <div className="settings-sidebar-header">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 8v8" />
-                <path d="M8 12h8" />
-              </svg>
-              <span>Accessibility</span>
-            </div>
+            <div className="settings-sidebar-header">Accessibility</div>
             <div className="settings-subsection-list">
               <button
                 className={`settings-subsection-item ${activeSubTab === 'a11y_text_size' ? 'active' : ''}`}
                 onClick={() => scrollToSection('a11y_text_size')}
               >
-                Text Size (Up to 24px)
-              </button>
-              <button
-                className={`settings-subsection-item ${activeSubTab === 'a11y_compactness' ? 'active' : ''}`}
-                onClick={() => scrollToSection('a11y_compactness')}
-              >
-                UI Compactness
+                Text Size
               </button>
               <button
                 className={`settings-subsection-item ${activeSubTab === 'a11y_contrast' ? 'active' : ''}`}
                 onClick={() => scrollToSection('a11y_contrast')}
               >
-                Contrast & Motion
+                Contrast
               </button>
             </div>
           </div>
 
-          {/* Group 4: Media */}
           <div className="settings-sidebar-group">
-            <div className="settings-sidebar-header">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-              <span>Media</span>
-            </div>
+            <div className="settings-sidebar-header">Activity</div>
             <div className="settings-subsection-list">
               <button
                 className={`settings-subsection-item ${activeSubTab === 'media_entries' ? 'active' : ''}`}
                 onClick={() => scrollToSection('media_entries')}
               >
-                User Entries
+                Proposals
               </button>
-              <button
-                className={`settings-subsection-item ${activeSubTab === 'media_images' ? 'active' : ''}`}
-                onClick={() => scrollToSection('media_images')}
-              >
-                Uploaded Images
-              </button>
-              <button
-                className={`settings-subsection-item ${activeSubTab === 'media_videos' ? 'active' : ''}`}
-                onClick={() => scrollToSection('media_videos')}
-              >
-                Video Clips & Cuts
-              </button>
-            </div>
-          </div>
-
-          {/* Group 5: Activity */}
-          <div className="settings-sidebar-group">
-            <div className="settings-sidebar-header">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-              </svg>
-              <span>Activity</span>
-            </div>
-            <div className="settings-subsection-list">
               <button
                 className={`settings-subsection-item ${activeSubTab === 'act_ballot' ? 'active' : ''}`}
                 onClick={() => scrollToSection('act_ballot')}
               >
-                My Cast Ballot
+                Ballot
               </button>
               <button
                 className={`settings-subsection-item ${activeSubTab === 'act_notifications' ? 'active' : ''}`}
                 onClick={() => scrollToSection('act_notifications')}
               >
-                Notifications
+                Alerts
               </button>
             </div>
           </div>
 
-          {/* Group 6: Community & Legal */}
           <div className="settings-sidebar-group">
-            <div className="settings-sidebar-header">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
-              <span>Legal & Guidelines</span>
-            </div>
+            <div className="settings-sidebar-header">System</div>
             <div className="settings-subsection-list">
               <button
-                className={`settings-subsection-item ${activeSubTab === 'legal_guidelines' ? 'active' : ''}`}
-                onClick={() => scrollToSection('legal_guidelines')}
+                className={`settings-subsection-item ${activeSubTab === 'rules_lifecycle' ? 'active' : ''}`}
+                onClick={() => scrollToSection('rules_lifecycle')}
               >
-                Community Guidelines
+                Rules
               </button>
               <button
                 className={`settings-subsection-item ${activeSubTab === 'legal_terms' ? 'active' : ''}`}
                 onClick={() => scrollToSection('legal_terms')}
               >
-                Terms of Service
+                Terms
               </button>
             </div>
           </div>
 
-          {/* Group 7: Developer Tools (Visible if admin) */}
           {user?.role === 'admin' && (
             <div className="settings-sidebar-group">
-              <div className="settings-sidebar-header">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                  <polyline points="2 17 12 22 22 17" />
-                  <polyline points="2 12 12 17 22 12" />
-                </svg>
-                <span>Developer Tools</span>
-              </div>
+              <div className="settings-sidebar-header">Admin</div>
               <div className="settings-subsection-list">
                 <button
                   className={`settings-subsection-item ${activeSubTab === 'dev_roles' ? 'active' : ''}`}
                   onClick={() => scrollToSection('dev_roles')}
                 >
-                  Role Privileges
+                  Tools
                 </button>
               </div>
             </div>
           )}
 
-          {/* Build Version Indicator */}
-          <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border-subtle)', fontSize: '11px', color: 'var(--text-light)', textAlign: 'center' }}>
-            <div className="mono" style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Build v1.0.0-rc4</div>
-            <div style={{ fontSize: '10px', marginTop: 2 }}>Release 2026.09.13 | internal-logic</div>
+          <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid var(--border-subtle)', fontSize: '11px', color: 'var(--text-light)', textAlign: 'center' }}>
+            <span className="mono">Build v1.0.0-rc4</span>
           </div>
         </aside>
 
@@ -543,61 +328,53 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         <div className="settings-scroll-container">
           {/* Subsection 1: Account Info */}
           <section id="account_info" className="settings-section-card">
-            <div>
-              <div className="card-title">Account Information</div>
-              <div className="card-desc">Inspect your authenticated Discord profile and identity parameters.</div>
-            </div>
+            <div className="card-title">Account</div>
 
             {user ? (
               <div className="settings-panel-box" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <img
-                    src={user.discordAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
-                    alt={user.discordUsername}
-                    style={{ width: 56, height: 56, borderRadius: '50%', border: '2px solid var(--accent-green)' }}
-                  />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 14,
+                      background: 'var(--bg-primary)',
+                      border: '1px solid var(--border-subtle)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '20px',
+                      fontWeight: 800,
+                      color: 'var(--text-main)',
+                    }}
+                  >
+                    {user.discordUsername ? user.discordUsername.slice(0, 2).toUpperCase() : 'US'}
+                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-main)' }}>
-                        {user.discordUsername}
-                      </span>
-                      <span title="Verified Discord Username (Immutable)" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-light)' }}>
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                      </span>
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-main)' }}>
+                      {user.discordUsername}
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       <span className={`badge ${user.role === 'admin' ? 'badge-engine' : 'badge-success'}`}>
                         {user.role.toUpperCase()}
                       </span>
-                      <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                        Discord ID: {user.discordId || user.id}
+                      <span className="mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        ID: {user.discordId || user.id}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="callout callout-info">
-                You are currently browsing as a Guest. Sign in with Discord to participate in voting and scene pitches.
+              <div className="callout callout-info" style={{ margin: 0 }}>
+                Guest session. Sign in with Discord.
               </div>
             )}
 
-            <div className="callout callout-info" style={{ margin: 0 }}>
-              Discord identity attributes are authenticated through OAuth2 and remain immutable across all voting rounds.
-            </div>
-
             {user && (
-              <div style={{ paddingTop: 6 }}>
-                <button className="btn btn-danger" onClick={handleLogout} style={{ gap: 8 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                  <span>Log Out</span>
+              <div>
+                <button className="btn btn-danger" onClick={handleLogout}>
+                  Log Out
                 </button>
               </div>
             )}
@@ -605,309 +382,106 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           {/* Subsection 2: Account Standing */}
           <section id="account_standing" className="settings-section-card">
-            <div>
-              <div className="card-title">Account Standing & Discipline</div>
-              <div className="card-desc">Review disciplinary status. Users with 3 accumulated warnings are barred from participating.</div>
-            </div>
+            <div className="card-title">Standing</div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)' }}>
-                  Current Status:
-                </span>
-                <span className={`badge ${isBarred ? 'badge-danger' : warnings > 0 ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '12px', padding: '4px 12px' }}>
-                  {isBarred ? 'BARRED FROM PARTICIPATING' : warnings === 2 ? '2/3 WARNINGS (CAUTION)' : warnings === 1 ? '1/3 WARNINGS' : 'GOOD STANDING (0 WARNS)'}
-                </span>
-              </div>
-            </div>
-
-            {/* 3-Slot Visual Warning Meter */}
             <div className="warning-meter">
               <div className={`warning-slot ${warnings >= 1 ? 'active-warn-1' : ''}`}>
-                <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase' }}>Warning 1</span>
-                <span style={{ fontSize: '11px', fontWeight: 600 }}>
-                  {warnings >= 1 ? 'Recorded Violation' : 'Clean'}
-                </span>
+                <span style={{ fontSize: '11px', fontWeight: 800 }}>Warning 1</span>
+                <span style={{ fontSize: '12px' }}>{warnings >= 1 ? 'Violation' : 'Clear'}</span>
               </div>
               <div className={`warning-slot ${warnings >= 2 ? 'active-warn-2' : ''}`}>
-                <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase' }}>Warning 2</span>
-                <span style={{ fontSize: '11px', fontWeight: 600 }}>
-                  {warnings >= 2 ? 'Severe Caution' : 'Clean'}
-                </span>
+                <span style={{ fontSize: '11px', fontWeight: 800 }}>Warning 2</span>
+                <span style={{ fontSize: '12px' }}>{warnings >= 2 ? 'Notice' : 'Clear'}</span>
               </div>
               <div className={`warning-slot ${warnings >= 3 ? 'active-warn-3' : ''}`}>
-                <span style={{ fontSize: '10px', fontWeight: 800, textTransform: 'uppercase' }}>Warning 3 (Barred)</span>
-                <span style={{ fontSize: '11px', fontWeight: 600 }}>
-                  {warnings >= 3 ? 'Barred from Voting' : 'Clean'}
-                </span>
-              </div>
-            </div>
-
-            {isBarred ? (
-              <div className="callout callout-danger" style={{ margin: 0 }}>
-                <strong>Account Restricted:</strong> This account has accumulated 3 warnings. You are permanently restricted from casting ballots, submitting scene pitches, and participating in active rounds.
-              </div>
-            ) : (
-              <div className="callout callout-info" style={{ margin: 0 }}>
-                Three recorded policy violations result in automatic exclusion from ballot submissions and pitch proposal catalogs.
-              </div>
-            )}
-
-            {/* Disciplinary Tester Controls */}
-            <div style={{ paddingTop: 6, borderTop: '1px solid var(--border-subtle)' }}>
-              <div className="settings-section-title">Test Disciplinary Thresholds</div>
-              <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={addWarning}
-                  disabled={isBarred}
-                >
-                  Simulate Warning (+1)
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  onClick={clearWarnings}
-                >
-                  Reset Warnings (Clear)
-                </button>
+                <span style={{ fontSize: '11px', fontWeight: 800 }}>Warning 3</span>
+                <span style={{ fontSize: '12px' }}>{warnings >= 3 ? 'Barred' : 'Clear'}</span>
               </div>
             </div>
           </section>
 
-          {/* Subsection 3: Password & Security */}
+          {/* Subsection 3: Authentication & Security */}
           <section id="account_security" className="settings-section-card">
-            <div>
-              <div className="card-title">Password & Security</div>
-              <div className="card-desc">Review your OAuth session integrity and authentication state.</div>
-            </div>
+            <div className="card-title">Security</div>
 
             <div className="settings-panel-box">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '13px' }}>Discord OAuth2 Token</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Session verified via cryptographic bearer token</div>
-                </div>
-                <span className="badge badge-success">Active Token</span>
+                <span style={{ fontWeight: 700 }}>Provider</span>
+                <span className="badge badge-success">Discord OAuth 2.0</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '13px' }}>Two-Factor Authentication (2FA)</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Enforced at Discord provider level</div>
-                </div>
-                <span className="badge badge-success">Enabled</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: 10 }}>
+                <span style={{ fontWeight: 700 }}>Session</span>
+                <span className="badge badge-success">Encrypted</span>
               </div>
             </div>
           </section>
 
-          {/* Subsection 4: Dark Mode & Theme */}
+          {/* Subsection 4: Theme Mode */}
           <section id="app_theme" className="settings-section-card">
-            <div>
-              <div className="card-title">Dark Mode & Theme Appearance</div>
-              <div className="card-desc">Switch between clean light dashboard mode and high-contrast dark theme.</div>
-            </div>
+            <div className="card-title">Theme</div>
 
             <div className="settings-row">
-              <div>
-                <div className="settings-row-label">Dark Mode</div>
-                <div className="settings-row-desc">Switch between light and dark theme across all dashboard views</div>
-              </div>
+              <span className="settings-row-label">Dark Theme</span>
               <label className="switch-toggle">
                 <input
                   type="checkbox"
-                  checked={isDarkMode}
-                  onChange={(e) => setIsDarkMode(e.target.checked)}
+                  checked={settings.theme === 'dark'}
+                  onChange={(e) => setTheme(e.target.checked ? 'dark' : 'light')}
                 />
                 <span className="switch-slider" />
               </label>
             </div>
-
-            <div style={{ paddingTop: 6, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                className={`save-settings-btn ${saveStatus ? 'saved' : ''}`}
-                onClick={handleSaveSettings}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                <span>{saveStatus || 'Save Theme Settings'}</span>
-              </button>
-              {saveStatus && (
-                <span className="text-success" style={{ fontSize: '12px', fontWeight: 600 }}>
-                  Theme preference saved.
-                </span>
-              )}
-            </div>
           </section>
 
-          {/* Subsection 5: Theme Density */}
+          {/* Subsection 5: Display Density */}
           <section id="app_density" className="settings-section-card">
-            <div>
-              <div className="card-title">Theme Density</div>
-              <div className="card-desc">Adjust padding and whitespace across cards and tables.</div>
-            </div>
-
-            <div className="text-size-presets">
-              {['cozy', 'normal', 'compact', 'ultra-compact'].map((mode) => (
-                <button
-                  key={mode}
-                  className={`text-size-preset-btn ${compactness === mode ? 'active' : ''}`}
-                  onClick={() => setCompactness(mode)}
-                >
-                  {mode.toUpperCase()}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ paddingTop: 6 }}>
-              <button className="save-settings-btn" onClick={handleSaveSettings}>
-                <span>Save Density Settings</span>
-              </button>
-            </div>
-          </section>
-
-          {/* Subsection 6: Audio Feedback */}
-          <section id="app_audio" className="settings-section-card">
-            <div>
-              <div className="card-title">Audio Feedback & Sound Cues</div>
-              <div className="card-desc">Toggle sound cues on allocating ballot ranks.</div>
-            </div>
-
-            <div className="settings-row">
-              <div>
-                <div className="settings-row-label">Audio Feedback</div>
-                <div className="settings-row-desc">Play audio confirmations when casting ballots</div>
-              </div>
-              <label className="switch-toggle">
-                <input
-                  type="checkbox"
-                  checked={soundFeedback}
-                  onChange={(e) => setSoundFeedback(e.target.checked)}
-                />
-                <span className="switch-slider" />
-              </label>
-            </div>
-
-            <div style={{ paddingTop: 6 }}>
-              <button className="save-settings-btn" onClick={handleSaveSettings}>
-                <span>Save Audio Settings</span>
-              </button>
-            </div>
-          </section>
-
-          {/* Subsection 7: Accessibility - Text Size (Up to 24px) */}
-          <section id="a11y_text_size" className="settings-section-card">
-            <div>
-              <div className="card-title">Text Scaling (Up to 24px)</div>
-              <div className="card-desc">Scale text dynamically from 12px up to 24px for enhanced readability.</div>
-            </div>
-
-            <div className="text-size-slider-wrap">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700 }}>Base Text Size</span>
-                <span className="badge badge-engine" style={{ fontSize: '12px' }}>
-                  {fontSize}px
-                </span>
-              </div>
-
-              <input
-                type="range"
-                min="12"
-                max="24"
-                step="1"
-                value={fontSize}
-                onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
-                className="range-slider"
-              />
-
-              <div className="text-size-presets">
-                {[12, 13, 16, 18, 20, 24].map((sz) => (
-                  <button
-                    key={sz}
-                    className={`text-size-preset-btn ${fontSize === sz ? 'active' : ''}`}
-                    onClick={() => setFontSize(sz)}
-                  >
-                    {sz === 13 ? '13px (Default)' : sz === 24 ? '24px (Max)' : `${sz}px`}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Live Text Preview Box */}
-            <div className="settings-panel-box">
-              <div style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-light)' }}>
-                Live Readability Preview ({fontSize}px)
-              </div>
-              <div style={{ fontSize: `${fontSize}px`, fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.3 }}>
-                Minecraft Movie Act 1 Community Scene Pitches
-              </div>
-              <p style={{ fontSize: `${Math.max(11, fontSize - 2)}px`, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                The Bastion Remnant Heist: Steve, Alex, and a rogue Piglin orchestrate an infiltration to recover a Netherite lodestone before the raid arrives.
-              </p>
-            </div>
-
-            <div style={{ paddingTop: 6 }}>
-              <button className="save-settings-btn" onClick={handleSaveSettings}>
-                <span>Save Text Size</span>
-              </button>
-            </div>
-          </section>
-
-          {/* Subsection 8: Accessibility - UI Compactness */}
-          <section id="a11y_compactness" className="settings-section-card">
-            <div>
-              <div className="card-title">UI Compactness & Spacing</div>
-              <div className="card-desc">Control layout density and margins across dashboard cards.</div>
-            </div>
+            <div className="card-title">Density</div>
 
             <div className="text-size-presets">
               {[
-                { id: 'cozy', label: 'Cozy (Spacious)' },
-                { id: 'normal', label: 'Normal (Default)' },
-                { id: 'compact', label: 'Compact (Tight)' },
-                { id: 'ultra-compact', label: 'Ultra-Compact (Dense)' },
+                { id: 'cozy', label: 'Cozy' },
+                { id: 'normal', label: 'Default' },
+                { id: 'compact', label: 'Compact' },
+                { id: 'ultra-compact', label: 'Ultra-Compact' },
               ].map((item) => (
                 <button
                   key={item.id}
-                  className={`text-size-preset-btn ${compactness === item.id ? 'active' : ''}`}
-                  onClick={() => setCompactness(item.id)}
+                  className={`text-size-preset-btn ${settings.compactness === item.id ? 'active' : ''}`}
+                  onClick={() => setCompactness(item.id as AppDensity)}
                 >
                   {item.label}
                 </button>
               ))}
             </div>
+          </section>
 
-            <div className="settings-panel-box">
-              <div style={{ fontWeight: 700, fontSize: '13px' }}>Current Density Mode: {compactness.toUpperCase()}</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Adjusts card margins, table cell padding, and grid spacing dynamically.
-              </div>
-            </div>
+          {/* Subsection 6: Accessibility - Text Size */}
+          <section id="a11y_text_size" className="settings-section-card">
+            <div className="card-title">Typography</div>
 
-            <div style={{ paddingTop: 6 }}>
-              <button className="save-settings-btn" onClick={handleSaveSettings}>
-                <span>Save Compactness</span>
-              </button>
+            <div className="text-size-presets">
+              {[12, 13, 16, 18, 20, 24].map((sz) => (
+                <button
+                  key={sz}
+                  className={`text-size-preset-btn ${settings.fontSize === sz ? 'active' : ''}`}
+                  onClick={() => setFontSize(sz)}
+                >
+                  {sz === 13 ? '13px (Default)' : `${sz}px`}
+                </button>
+              ))}
             </div>
           </section>
 
-          {/* Subsection 9: Accessibility - Contrast & Motion */}
+          {/* Subsection 7: Contrast & Motion */}
           <section id="a11y_contrast" className="settings-section-card">
-            <div>
-              <div className="card-title">High Contrast & Reduced Motion</div>
-              <div className="card-desc">Accessibility features for visual comfort and reduced motion sensitivity.</div>
-            </div>
+            <div className="card-title">Accessibility</div>
 
             <div className="settings-row">
-              <div>
-                <div className="settings-row-label">High Contrast Borders</div>
-                <div className="settings-row-desc">Enhances border definitions and text clarity</div>
-              </div>
+              <span className="settings-row-label">High Contrast Borders</span>
               <label className="switch-toggle">
                 <input
                   type="checkbox"
-                  checked={highContrast}
+                  checked={settings.highContrast}
                   onChange={(e) => setHighContrast(e.target.checked)}
                 />
                 <span className="switch-slider" />
@@ -915,40 +489,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
 
             <div className="settings-row">
-              <div>
-                <div className="settings-row-label">Reduced Motion</div>
-                <div className="settings-row-desc">Disables transitions and UI animations</div>
-              </div>
+              <span className="settings-row-label">Reduced Motion</span>
               <label className="switch-toggle">
                 <input
                   type="checkbox"
-                  checked={reducedMotion}
+                  checked={settings.reducedMotion}
                   onChange={(e) => setReducedMotion(e.target.checked)}
                 />
                 <span className="switch-slider" />
               </label>
             </div>
-
-            <div style={{ paddingTop: 6 }}>
-              <button className="save-settings-btn" onClick={handleSaveSettings}>
-                <span>Save Contrast & Motion</span>
-              </button>
-            </div>
           </section>
 
-          {/* Subsection 10: Media - User Entries */}
+          {/* Subsection 8: Proposals */}
           <section id="media_entries" className="settings-section-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div className="card-title">User Script Entries</div>
-                <div className="card-desc">All pitch submissions created by {user?.discordUsername || 'this session user'}.</div>
-              </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="card-title">My Proposals</div>
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={onOpenCreatePitch}
                 disabled={isBarred}
               >
-                + Submit Pitch
+                + Submit
               </button>
             </div>
 
@@ -956,298 +518,115 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               {myPitches.length > 0 ? (
                 myPitches.map((pitch) => (
                   <div key={pitch.id} className="mini-pitch-item">
-                    <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '13px' }}>
-                      {pitch.title}
-                    </div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '11px', lineHeight: 1.4 }}>
-                      {pitch.description}
-                    </div>
-                    <div className="mono" style={{ fontSize: '10px', color: 'var(--text-light)', marginTop: 4 }}>
-                      ID: {pitch.id} | Submitter: {user?.discordUsername}
-                    </div>
+                    <span style={{ fontWeight: 700 }}>{pitch.title}</span>
+                    <span className="mono" style={{ fontSize: '11px', color: 'var(--text-light)' }}>
+                      {pitch.id}
+                    </span>
                   </div>
                 ))
               ) : (
-                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-                  No written pitch entries recorded for this user session yet.
+                <div style={{ padding: '12px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  None
                 </div>
               )}
             </div>
           </section>
 
-          {/* Subsection 11: Media - Uploaded Images */}
-          <section id="media_images" className="settings-section-card">
-            <div>
-              <div className="card-title">Uploaded Concept Images & Storyboards</div>
-              <div className="card-desc">Images and concept art attached to your session pitches.</div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
-              {userImages.map((img) => (
-                <div
-                  key={img.id}
-                  style={{
-                    borderRadius: 'var(--radius-md)',
-                    overflow: 'hidden',
-                    border: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-card-muted)',
-                  }}
-                >
-                  <img
-                    src={img.url}
-                    alt={img.title}
-                    style={{ width: '100%', height: 120, objectFit: 'cover' }}
-                  />
-                  <div style={{ padding: '8px 10px' }}>
-                    <div style={{ fontWeight: 700, fontSize: '11px', color: 'var(--text-main)' }}>
-                      {img.title}
-                    </div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                      {img.timestamp}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Subsection 12: Media - Video Clips & Animatics */}
-          <section id="media_videos" className="settings-section-card">
-            <div>
-              <div className="card-title">Video Clips & Animatics</div>
-              <div className="card-desc">Video sequences and animatic tests linked to your proposals.</div>
-            </div>
-
-            <div className="settings-panel-box">
-              {userVideos.map((vid) => (
-                <div
-                  key={vid.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 12px',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border-subtle)',
-                    borderRadius: 8,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 8,
-                        background: 'var(--bg-card-muted)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polygon points="5 3 19 12 5 21 5 3" />
-                      </svg>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '12px' }}>{vid.title}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                        Duration: {vid.duration} | Format: {vid.format}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="badge badge-success" style={{ fontSize: '10px' }}>
-                    Ready
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Subsection 13: My Cast Ballot */}
+          {/* Subsection 9: Recorded Ballot */}
           <section id="act_ballot" className="settings-section-card">
-            <div>
-              <div className="card-title">My Cast Ballot</div>
-              <div className="card-desc">Review your recorded 3-2-1 ballot choices for the active round.</div>
-            </div>
+            <div className="card-title">Recorded Ballot</div>
 
             <div className="settings-panel-box">
               {myBallot ? (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <span className="badge badge-success" style={{ fontSize: '10px' }}>
-                      BALLOT RECORDED (6 POINTS ALLOCATED)
-                    </span>
-                    <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      Round: {roundId}
-                    </span>
+                  <div className="mini-ballot-item">
+                    <span style={{ fontWeight: 700, color: 'var(--accent-gold)' }}>1st Choice (3 pts)</span>
+                    <span style={{ fontWeight: 700 }}>{getPitchTitle(myBallot.rank1)}</span>
                   </div>
                   <div className="mini-ballot-item">
-                    <span style={{ fontWeight: 800, color: 'var(--accent-gold)' }}>1st Choice (3 pts)</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                      {getPitchTitle(myBallot.rank1)}
-                    </span>
+                    <span style={{ fontWeight: 700, color: 'var(--accent-silver)' }}>2nd Choice (2 pts)</span>
+                    <span style={{ fontWeight: 700 }}>{getPitchTitle(myBallot.rank2)}</span>
                   </div>
                   <div className="mini-ballot-item">
-                    <span style={{ fontWeight: 800, color: 'var(--accent-silver)' }}>2nd Choice (2 pts)</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                      {getPitchTitle(myBallot.rank2)}
-                    </span>
-                  </div>
-                  <div className="mini-ballot-item">
-                    <span style={{ fontWeight: 800, color: 'var(--accent-bronze)' }}>3rd Choice (1 pt)</span>
-                    <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>
-                      {getPitchTitle(myBallot.rank3)}
-                    </span>
+                    <span style={{ fontWeight: 700, color: 'var(--accent-bronze)' }}>3rd Choice (1 pt)</span>
+                    <span style={{ fontWeight: 700 }}>{getPitchTitle(myBallot.rank3)}</span>
                   </div>
                   <button
-                    className="btn btn-secondary"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => onNavigateTab('ballot')}
-                    style={{ marginTop: 6, width: 'fit-content' }}
+                    style={{ marginTop: 8, width: 'fit-content' }}
                   >
-                    Modify Ballot in Ballot Box
+                    Edit Ballot
                   </button>
                 </>
               ) : (
-                <div style={{ padding: '12px 0' }}>
-                  <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: 12 }}>
-                    You have not recorded a ballot for the active round yet.
-                  </div>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => onNavigateTab('ballot')}
-                  >
-                    Cast 3-2-1 Ballot Now
+                <div style={{ padding: '12px 0', textAlign: 'center' }}>
+                  <button className="btn btn-primary" onClick={() => onNavigateTab('ballot')}>
+                    Cast Ballot
                   </button>
                 </div>
               )}
             </div>
           </section>
 
-          {/* Subsection 14: Notifications */}
+          {/* Subsection 10: Notifications */}
           <section id="act_notifications" className="settings-section-card">
-            <div>
-              <div className="card-title">Push Notification Alerts</div>
-              <div className="card-desc">Configure web push notification alerts for ballot pool status and round outcomes.</div>
-            </div>
+            <div className="card-title">Notifications</div>
 
             <div className="settings-row">
-              <div>
-                <div className="settings-row-label">Browser Push Notifications</div>
-                <div className="settings-row-desc">
-                  {notifStatus ? `Alert status: ${notifStatus}` : 'Receive alerts when rounds close or results update'}
-                </div>
-              </div>
+              <span className="settings-row-label">
+                Browser Alerts {notifMessage && `(${notifMessage})`}
+              </span>
               <label className="switch-toggle">
                 <input
                   type="checkbox"
-                  checked={pushEnabled}
+                  checked={settings.pushNotifications}
                   onChange={(e) => handlePushToggle(e.target.checked)}
                 />
                 <span className="switch-slider" />
               </label>
             </div>
+          </section>
 
-            <div style={{ paddingTop: 6 }}>
-              <button className="save-settings-btn" onClick={handleSaveSettings}>
-                <span>Save Notification Settings</span>
-              </button>
+          {/* Subsection 11: Voting Rules */}
+          <section id="rules_lifecycle" className="settings-section-card">
+            <div className="card-title">Rules</div>
+
+            <div className="settings-panel-box" style={{ gap: 10 }}>
+              <div><strong>1. Allocation:</strong> 3 choices allocate 3, 2, and 1 points.</div>
+              <div><strong>2. Anti-Stacking:</strong> Choices must be unique.</div>
+              <div><strong>3. Invariant:</strong> Pool points strictly equal 6N.</div>
             </div>
           </section>
 
-          {/* Subsection 15: Community Guidelines */}
-          <section id="legal_guidelines" className="settings-section-card">
-            <div>
-              <div className="card-title">Community Guidelines</div>
-              <div className="card-desc">Standards of participation, etiquette, anti-brigading rules, and content policies.</div>
-            </div>
-
-            <div className="settings-panel-box" style={{ lineHeight: 1.6, fontSize: '12px', color: 'var(--text-main)' }}>
-              <h4 style={{ fontSize: '13px', fontWeight: 800, marginBottom: 4 }}>1. Respectful Collaboration and Fair Play</h4>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-              </p>
-
-              <h4 style={{ fontSize: '13px', fontWeight: 800, marginBottom: 4 }}>2. Anti-Brigading and Ballot Integrity</h4>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
-                Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Anti-stacking invariants are strictly enforced.
-              </p>
-
-              <h4 style={{ fontSize: '13px', fontWeight: 800, marginBottom: 4 }}>3. Pitch Submissions and Originality</h4>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
-                Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius, turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris. Integer in mauris eu nibh euismod gravida.
-              </p>
-
-              <h4 style={{ fontSize: '13px', fontWeight: 800, marginBottom: 4 }}>4. Disciplinary Action and 3-Warning Rule</h4>
-              <p style={{ color: 'var(--text-muted)' }}>
-                Fusce feugiat malesuada odio. Morbi nunc odio, gravida at, cursus nec, luctus a, lorem. Maecenas tristique orci ac sem. Duis ultricies pharetra magna. Accumulation of 3 warnings results in permanent account restriction from the platform.
-              </p>
-            </div>
-          </section>
-
-          {/* Subsection 16: Terms of Service */}
+          {/* Subsection 12: Terms */}
           <section id="legal_terms" className="settings-section-card">
-            <div>
-              <div className="card-title">Terms of Service</div>
-              <div className="card-desc">Platform terms, intellectual property disclosures, and user agreement.</div>
-            </div>
+            <div className="card-title">Terms</div>
 
-            <div className="settings-panel-box" style={{ lineHeight: 1.6, fontSize: '12px', color: 'var(--text-main)' }}>
-              <h4 style={{ fontSize: '13px', fontWeight: 800, marginBottom: 4 }}>1. Acceptance of Terms</h4>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus imperdiet, nulla et dictum interdum, nisi lorem egestas odio, vitae scelerisque enim ligula venenatis dolor. Maecenas nisl est, ultrices nec congue eget, auctor vitae massa.
-              </p>
-
-              <h4 style={{ fontSize: '13px', fontWeight: 800, marginBottom: 4 }}>2. Intellectual Property and Submissions</h4>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
-                Aliquam erat volutpat. Nam dui mi, tincidunt quis, accumsan porttitor, facilisis luctus, metus. Phasellus ultrices nulla quis nibh. Quisque a lectus. Donec consectetuer ligula vulputate sem tristique cursus.
-              </p>
-
-              <h4 style={{ fontSize: '13px', fontWeight: 800, marginBottom: 4 }}>3. Limitation of Liability</h4>
-              <p style={{ color: 'var(--text-muted)', marginBottom: 12 }}>
-                Pellentesque ipsum. Cras pellentesque volutpat dui. Maecenas tristique orci ac sem. Duis ultricies pharetra magna. Donec accumsan malesuada orci. Donec sit amet eros. Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-              </p>
-
-              <h4 style={{ fontSize: '13px', fontWeight: 800, marginBottom: 4 }}>4. Termination and Modifications</h4>
-              <p style={{ color: 'var(--text-muted)' }}>
-                Proin in tellus sit amet nibh dignissim sagittis. Vivamus luctus egestas leo. Maecenas sollicitudin. Nullam rhoncus aliquam metus. Etiam egestas wisi a erat. We reserve the right to bar accounts upon receipt of 3 warnings.
-              </p>
+            <div className="settings-panel-box" style={{ gap: 10 }}>
+              <div><strong>Community Standards:</strong> Respectful participation required.</div>
+              <div><strong>Discipline:</strong> 3 warnings result in exclusion.</div>
             </div>
           </section>
 
-          {/* Subsection 17: Developer Role Privileges */}
+          {/* Subsection 13: Admin */}
           {user?.role === 'admin' && (
             <section id="dev_roles" className="settings-section-card">
-              <div>
-                <div className="card-title">Roles & Access Rights</div>
-                <div className="card-desc">Inspect permission tier and switch active roles for platform testing.</div>
-              </div>
+              <div className="card-title">Admin</div>
 
-              <div>
-                <div className="settings-section-title">Testing Role Authorization</div>
-                <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+              <div className="settings-panel-box">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 700 }}>Role</span>
+                  <span className="badge badge-engine">ADMINISTRATOR</span>
+                </div>
+                <div style={{ marginTop: 10 }}>
                   <button
-                    className={`btn ${(user.role as UserRole) === 'user' ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => handleRoleChange('user')}
+                    className="btn btn-secondary"
+                    onClick={() => onNavigateTab('diagnostics')}
                   >
-                    Voter (User Mode)
-                  </button>
-                  <button
-                    className={`btn ${(user.role as UserRole) === 'admin' ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => handleRoleChange('admin')}
-                  >
-                    Developer (Admin Mode)
+                    Diagnostics
                   </button>
                 </div>
-              </div>
-
-              <div style={{ marginTop: 8 }}>
-                <div className="settings-section-title">Developer Diagnostic Tools</div>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => onNavigateTab('diagnostics')}
-                >
-                  Launch Diagnostics Workbench
-                </button>
               </div>
             </section>
           )}

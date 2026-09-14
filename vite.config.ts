@@ -9,6 +9,12 @@ export default defineConfig({
     open: false,
     host: true,
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://35.192.18.39',
+        changeOrigin: true,
+      },
+    },
   },
   resolve: {
     alias: {

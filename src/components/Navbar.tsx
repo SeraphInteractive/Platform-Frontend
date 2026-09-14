@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext.tsx';
+import { useAuth, getDiscordAvatar } from '../context/AuthContext.tsx';
+import { useSettings } from '../context/SettingsContext.tsx';
 import { SettingsDropdown } from './SettingsDropdown.tsx';
 import { SettingsSubTab } from '../views/Settings/SettingsPage.tsx';
+import { useScrollDirection } from '../hooks/useScrollDirection.ts';
 
-export type NavTabId = 'overview' | 'ballot' | 'pitches' | 'leaderboard' | 'diagnostics' | 'settings';
+export type NavTabId = 'landing' | 'overview' | 'ballot' | 'pitches' | 'leaderboard' | 'docs' | 'diagnostics' | 'settings';
 
 interface NavbarProps {
   activeTab: NavTabId;
   onTabChange: (tab: NavTabId) => void;
   onNavigateSettings: (subTab?: SettingsSubTab) => void;
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
   onOpenCreatePitch: () => void;
 }
 
@@ -18,159 +18,157 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
   onNavigateSettings,
-  searchQuery,
-  onSearchChange,
   onOpenCreatePitch,
 }) => {
-  const { user, loginWithDiscord, loginAsDevUser } = useAuth();
-  const [showSettings, setShowSettings] = useState(false);
+  const { user, loginWithDiscord } = useAuth();
+  const { settings, toggleTheme } = useSettings();
+  const [showAccountOverview, setShowAccountOverview] = useState(false);
+  const [pfpError, setPfpError] = useState(false);
+  const isScrollVisible = useScrollDirection();
 
-  const isAdmin = user?.role === 'admin';
+  const isNavVisible = isScrollVisible || showAccountOverview;
 
   return (
-    <header className="top-navbar">
-      {/* Brand logo and navigation tabs */}
-      <div className="nav-left">
-        <div
-          className="brand-logo-mark"
-          onClick={() => onTabChange('overview')}
-          title="MCS Voting Platform"
-        >
-          <div className="brand-glyph" />
-        </div>
+    <header className={`top-navbar-fixed-container ${isNavVisible ? 'nav-visible' : 'nav-hidden'}`}>
+      <div className="top-navbar">
+        {/* Brand logo and navigation tabs */}
+        <div className="nav-left">
+          <div
+            className="brand-logo-mark"
+            onClick={() => onTabChange('landing')}
+            title="Home"
+          >
+            <div className="brand-glyph" />
+          </div>
 
-        <nav className="nav-menu">
-          <button
-            className={`nav-link-btn ${activeTab === 'overview' ? 'active' : ''}`}
-            onClick={() => onTabChange('overview')}
-          >
-            Overview
-          </button>
-          <button
-            className={`nav-link-btn ${activeTab === 'ballot' ? 'active' : ''}`}
-            onClick={() => onTabChange('ballot')}
-          >
-            Ballot Box
-          </button>
-          <button
-            className={`nav-link-btn ${activeTab === 'pitches' ? 'active' : ''}`}
-            onClick={() => onTabChange('pitches')}
-          >
-            Pitches
-          </button>
-          <button
-            className={`nav-link-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
-            onClick={() => onTabChange('leaderboard')}
-          >
-            Leaderboard
-          </button>
-
-          {/* Diagnostics only visible to admin / developer */}
-          {isAdmin && (
+          <nav className="nav-menu">
             <button
-              className={`nav-link-btn ${activeTab === 'diagnostics' ? 'active' : ''}`}
-              onClick={() => onTabChange('diagnostics')}
+              className={`nav-link-btn ${activeTab === 'ballot' ? 'active' : ''}`}
+              onClick={() => onTabChange('ballot')}
             >
-              Diagnostics
+              Ballot Box
             </button>
-          )}
-
-          {activeTab === 'settings' && (
-            <button className="nav-link-btn active">
-              Settings
+            <button
+              className={`nav-link-btn ${activeTab === 'pitches' ? 'active' : ''}`}
+              onClick={() => onTabChange('pitches')}
+            >
+              Proposals
             </button>
-          )}
-        </nav>
-      </div>
+            <button
+              className={`nav-link-btn ${activeTab === 'leaderboard' ? 'active' : ''}`}
+              onClick={() => onTabChange('leaderboard')}
+            >
+              Leaderboard
+            </button>
+            <button
+              className={`nav-link-btn ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => onTabChange('overview')}
+            >
+              Dashboard
+            </button>
+            <button
+              className={`nav-link-btn ${activeTab === 'docs' ? 'active' : ''}`}
+              onClick={() => onTabChange('docs')}
+            >
+              Docs
+            </button>
 
-      {/* Right actions: search input, create pitch button, settings & user profile */}
-      <div className="nav-right">
-        <div className="search-pill">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--text-light)' }}>
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search pitches by title or keyword"
-            value={searchQuery}
-            onChange={(e) => {
-              onSearchChange(e.target.value);
-              if (activeTab !== 'pitches' && e.target.value) {
-                onTabChange('pitches');
-              }
-            }}
-          />
+            {(user?.role === 'admin' || user?.role === 'moderator') && (
+              <button
+                className={`nav-link-btn ${activeTab === 'diagnostics' ? 'active' : ''}`}
+                onClick={() => onTabChange('diagnostics')}
+              >
+                Console
+              </button>
+            )}
+          </nav>
         </div>
 
-        {/* Submit pitch action button */}
-        <button
-          className="btn-dark"
-          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px' }}
-          onClick={onOpenCreatePitch}
-          title="Submit a new script pitch"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span>Submit Pitch</span>
-        </button>
-
-        {/* Settings gear button and user profile with dropdown */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Right actions: theme toggle, submit pitch, user profile */}
+        <div className="nav-right">
+          {/* Theme Toggle Button */}
           <button
-            className={`icon-btn ${showSettings ? 'active' : ''}`}
-            title="Settings & Profile"
-            onClick={() => setShowSettings(!showSettings)}
+            className="icon-btn"
+            onClick={toggleTheme}
+            title={settings.theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              {settings.theme === 'dark' ? (
+                <>
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </>
+              ) : (
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              )}
             </svg>
           </button>
 
-          {user ? (
-            <div
-              className="user-pill"
-              onClick={() => setShowSettings(!showSettings)}
-              title="Open profile & settings"
-            >
-              <img
-                src={user.discordAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
-                alt={user.discordUsername}
-                className="user-avatar-img"
-              />
-              <div className="user-details">
-                <span className="user-display-name">{user.discordUsername}</span>
-                <span className="user-display-role">{user.role.toUpperCase()}</span>
-              </div>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button className="btn-dark" onClick={loginWithDiscord}>
-                Discord Login
-              </button>
-              <button className="btn-subtle" onClick={() => loginAsDevUser('admin')}>
-                Dev Login
-              </button>
-            </div>
-          )}
+          {/* Submit proposal action button */}
+          <button
+            className="btn btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', fontWeight: 700 }}
+            onClick={onOpenCreatePitch}
+            title="Submit a new proposal"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Submit Proposal</span>
+          </button>
 
-          {/* Settings & Profile Dropdown */}
-          <SettingsDropdown
-            isOpen={showSettings}
-            onClose={() => setShowSettings(false)}
-            onNavigateSettings={(subTab) => {
-              setShowSettings(false);
-              onNavigateSettings(subTab);
-            }}
-            onNavigateTab={(tab) => {
-              setShowSettings(false);
-              onTabChange(tab);
-            }}
-          />
+          {/* Discord PFP avatar with Account Overview popover (includes Settings and Logout) */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            {user ? (
+              <button
+                className={`user-pfp-btn ${showAccountOverview ? 'active' : ''}`}
+                onClick={() => setShowAccountOverview(!showAccountOverview)}
+                title="Account Overview"
+              >
+                {!pfpError ? (
+                  <img
+                    src={getDiscordAvatar(user)}
+                    alt={user.discordUsername}
+                    className="user-pfp-img"
+                    onError={() => setPfpError(true)}
+                  />
+                ) : (
+                  <div className="user-pfp-fallback">
+                    {user.discordUsername ? user.discordUsername.slice(0, 2).toUpperCase() : 'US'}
+                  </div>
+                )}
+              </button>
+            ) : (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={loginWithDiscord}
+              >
+                Sign in with Discord
+              </button>
+            )}
+
+            {/* Account Overview Popover */}
+            <SettingsDropdown
+              isOpen={showAccountOverview}
+              onClose={() => setShowAccountOverview(false)}
+              onNavigateSettings={() => {
+                setShowAccountOverview(false);
+                onNavigateSettings('account_info');
+              }}
+              onNavigateTab={(tab) => {
+                setShowAccountOverview(false);
+                onTabChange(tab);
+              }}
+            />
+          </div>
         </div>
       </div>
     </header>

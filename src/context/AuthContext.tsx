@@ -4,12 +4,19 @@ import { apiRequest, getApiBaseUrl } from '../api/client.ts';
 
 export type UserRole = 'user' | 'moderator' | 'admin';
 
+export interface DiscordGuildPermissions {
+  isGuildOwner?: boolean;
+  permissionBits?: string | number;
+  roles?: string[];
+}
+
 export interface UserProfile {
   id: string;
   discordId: string;
   discordUsername: string;
   discordAvatar?: string;
   role: UserRole;
+  guildPermissions?: DiscordGuildPermissions;
   warnings?: number;
   isBarred?: boolean;
 }
@@ -23,7 +30,6 @@ interface AuthContextType {
   isBarred: boolean;
   loginWithDiscord: () => void;
   setAuthToken: (token: string) => void;
-  loginAsDevUser: (role?: UserRole, username?: string) => void;
   addWarning: () => void;
   clearWarnings: () => void;
   logout: () => void;
@@ -32,8 +38,95 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'mcs_auth_token';
-const DEV_USER_KEY = 'mcs_dev_user';
 const WARNINGS_KEY = 'mcs_user_warnings';
+const SESSION_USER_KEY = 'mcs_authenticated_user';
+
+// Discord server role & permission detection constants
+const DISCORD_ADMIN_PERMISSION_FLAG = 0x8; // ADMINISTRATOR bit
+const DISCORD_MANAGE_GUILD_FLAG = 0x20; // MANAGE_GUILD bit
+const DISCORD_MODERATE_MEMBERS_FLAG = 0x10000000000; // MODERATE_MEMBERS bit
+
+// Hardcoded admin Discord IDs for automated administrator role elevation
+export const HARDCODED_ADMIN_DISCORD_IDS = new Set([
+  '215537065863938049',
+  '212401207694721024',
+  '965511204372086814',
+  '364539598942240768',
+]);
+
+const TRUSTED_ADMIN_ROLE_NAMES = new Set([
+  'administrator',
+  'admin',
+  'lead developer',
+  'platform admin',
+]);
+
+const TRUSTED_MOD_ROLE_NAMES = new Set([
+  'moderator',
+  'mod',
+  'community manager',
+]);
+
+/**
+ * Automatically calculates user role based on Discord OAuth profile and server guild permissions
+ */
+export function resolveDiscordRole(discordUser: Partial<UserProfile>): UserRole {
+  if (!discordUser.discordId) return 'user';
+
+  // 1. Direct trusted Discord ID check
+  if (HARDCODED_ADMIN_DISCORD_IDS.has(discordUser.discordId)) {
+    return 'admin';
+  }
+
+  // 2. Discord server guild owner check
+  if (discordUser.guildPermissions?.isGuildOwner) {
+    return 'admin';
+  }
+
+  // 3. Discord bitwise permissions check
+  const permBits = Number(discordUser.guildPermissions?.permissionBits || 0);
+  if ((permBits & DISCORD_ADMIN_PERMISSION_FLAG) === DISCORD_ADMIN_PERMISSION_FLAG) {
+    return 'admin';
+  }
+  if ((permBits & DISCORD_MANAGE_GUILD_FLAG) === DISCORD_MANAGE_GUILD_FLAG) {
+    return 'admin';
+  }
+  if ((permBits & DISCORD_MODERATE_MEMBERS_FLAG) === DISCORD_MODERATE_MEMBERS_FLAG) {
+    return 'moderator';
+  }
+
+  // 4. Discord server assigned roles check
+  const userRoles = (discordUser.guildPermissions?.roles || []).map((r) => r.toLowerCase().trim());
+  if (userRoles.some((r) => TRUSTED_ADMIN_ROLE_NAMES.has(r))) {
+    return 'admin';
+  }
+  if (userRoles.some((r) => TRUSTED_MOD_ROLE_NAMES.has(r))) {
+    return 'moderator';
+  }
+
+  // Default to standard community voter
+  return 'user';
+}
+
+/**
+ * Returns a valid Discord CDN avatar URL or default Discord embed avatar
+ */
+export function getDiscordAvatar(user: Partial<UserProfile> | null | undefined): string {
+  if (!user) return 'https://cdn.discordapp.com/embed/avatars/0.png';
+  if (user.discordAvatar) {
+    if (user.discordAvatar.startsWith('http')) return user.discordAvatar;
+    if (user.discordId) return `https://cdn.discordapp.com/avatars/${user.discordId}/${user.discordAvatar}.png`;
+  }
+  if (user.discordId) {
+    try {
+      const idx = Number(BigInt(user.discordId) % 6n);
+      return `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
+    } catch {
+      return 'https://cdn.discordapp.com/embed/avatars/0.png';
+    }
+  }
+  return 'https://cdn.discordapp.com/embed/avatars/0.png';
+}
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const queryClient = useQueryClient();
@@ -52,53 +145,67 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return 0;
   });
 
-  const [devUser, setDevUser] = useState<UserProfile | null>(() => {
+  // Local cached authenticated session
+  const [sessionUser, setSessionUser] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(DEV_USER_KEY);
+      const saved = localStorage.getItem(SESSION_USER_KEY);
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          return {
+            ...parsed,
+            role: resolveDiscordRole(parsed),
+          };
         } catch {
           // ignore
         }
       }
     }
-    // Default persistent dev voter for seamless developer testing
-    return {
-      id: 'dev_user_1',
-      discordId: '123456789012345678',
-      discordUsername: 'SteveDev',
-      role: 'admin',
-    };
+    return null;
   });
+
+  // Capture token from query param if returning from Discord OAuth redirect
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const queryToken = params.get('token');
+      if (queryToken) {
+        localStorage.setItem(TOKEN_KEY, queryToken);
+        setToken(queryToken);
+        // Clean URL query string without reloading
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+        queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      }
+    }
+  }, [queryClient]);
 
   // Query /api/v1/auth/me when token is present
   const {
     data: apiUser,
     isLoading: isApiLoading,
-    error,
   } = useQuery({
     queryKey: ['auth', 'me', token],
-    queryFn: () => apiRequest<UserProfile>('/auth/me'),
+    queryFn: async () => {
+      const res = await apiRequest<UserProfile>('/auth/me');
+      const resolvedRole = resolveDiscordRole(res);
+      const enriched = { ...res, role: resolvedRole };
+      localStorage.setItem(SESSION_USER_KEY, JSON.stringify(enriched));
+      setSessionUser(enriched);
+      return enriched;
+    },
     enabled: !!token,
     retry: false,
-    staleTime: 1000 * 60 * 15, // 15 mins
+    staleTime: 1000 * 60 * 15,
   });
 
-  // Handle token expiration or invalidity
-  useEffect(() => {
-    if (error && token) {
-      console.warn('Auth token expired or invalid, clearing:', error);
-      // Don't wipe devUser, just token
-    }
-  }, [error, token]);
-
-  const rawUser = apiUser || devUser;
+  const rawUser = apiUser || sessionUser;
   const isBarred = warnings >= 3;
 
   const activeUser: UserProfile | null = rawUser
     ? {
         ...rawUser,
+        role: resolveDiscordRole(rawUser),
         warnings,
         isBarred,
       }
@@ -125,26 +232,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loginWithDiscord = () => {
     const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
-    // In production Adonis, hits discord oauth redirect
     window.location.href = `${baseUrl}/auth/discord`;
-  };
-
-  const loginAsDevUser = (role: UserRole = 'user', username = 'CommunityVoter') => {
-    const userObj: UserProfile = {
-      id: `dev_${role}_${Date.now()}`,
-      discordId: `${Math.floor(100000000000000000 + Math.random() * 900000000000000000)}`,
-      discordUsername: `${username}_${Math.floor(100 + Math.random() * 900)}`,
-      role,
-    };
-    localStorage.setItem(DEV_USER_KEY, JSON.stringify(userObj));
-    setDevUser(userObj);
   };
 
   const logout = () => {
     localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(DEV_USER_KEY);
+    localStorage.removeItem(SESSION_USER_KEY);
     setToken(null);
-    setDevUser(null);
+    setSessionUser(null);
     queryClient.clear();
   };
 
@@ -159,7 +254,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isBarred,
         loginWithDiscord,
         setAuthToken,
-        loginAsDevUser,
         addWarning,
         clearWarnings,
         logout,

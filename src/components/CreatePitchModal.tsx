@@ -85,11 +85,11 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
       >
         <div className="card-header" style={{ marginBottom: 12 }}>
           <div>
-            <div className="card-title" style={{ fontSize: '18px' }}>
-              Submit a Script Pitch
+            <div className="card-title" style={{ fontSize: '16px' }}>
+              Submit Proposal
             </div>
             <div className="card-desc">
-              Propose an Act 1 scene idea for the Minecraft Movie community voting pool.
+              Submit a proposal for the active round.
             </div>
           </div>
           <button
@@ -107,7 +107,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
 
         {isBarred && (
           <div className="callout callout-danger" style={{ marginBottom: 14 }}>
-            <strong>Account Barred:</strong> Your account has accumulated 3 warnings and is barred from submitting new pitches.
+            Account barred: Your account has accumulated 3 warnings and cannot submit proposals.
           </div>
         )}
 
@@ -119,13 +119,13 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="form-group">
-            <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>
-              Scene Title
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>
+              Proposal Title
             </label>
             <input
               type="text"
               className="input-field"
-              placeholder="e.g. The Nether Fortress Ambush"
+              placeholder="Enter proposal title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isBarred}
@@ -134,13 +134,13 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
           </div>
 
           <div className="form-group">
-            <label style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>
-              Scene Synopsis and Narrative Details
+            <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>
+              Proposal Description
             </label>
             <textarea
               className="input-field"
               rows={4}
-              placeholder="Describe what happens in this scene, which characters appear, and why it fits the movie..."
+              placeholder="Enter synopsis, narrative structure, and implementation details..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={isBarred}
@@ -149,15 +149,15 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-            <button type="button" className="btn-subtle" onClick={onClose}>
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
               Cancel
             </button>
             <button
               type="submit"
-              className="btn-dark"
+              className="btn btn-primary"
               disabled={submitMutation.isPending || isBarred}
             >
-              {isBarred ? 'Account Barred' : submitMutation.isPending ? 'Submitting...' : 'Submit Pitch to Round'}
+              {isBarred ? 'Account Barred' : submitMutation.isPending ? 'Submitting...' : 'Submit Proposal'}
             </button>
           </div>
         </form>

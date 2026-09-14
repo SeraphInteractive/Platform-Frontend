@@ -8,14 +8,14 @@ export interface ApiErrorResponse {
   message?: string;
 }
 
-const DEFAULT_API_URL = 'http://localhost:3333/api/v1';
+const DEFAULT_API_URL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env?.VITE_API_URL || '/api/v1';
 
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('mcs_api_base_url');
     if (saved) return saved;
   }
-  return (import.meta as unknown as { env: { VITE_API_URL?: string } }).env?.VITE_API_URL || DEFAULT_API_URL;
+  return DEFAULT_API_URL;
 }
 
 export function setApiBaseUrl(url: string): void {

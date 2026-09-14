@@ -7,15 +7,17 @@ import {
   type EntryId,
   type Ballot,
   type EntryScoreBreakdown,
+  type RaidTelemetry,
 } from '@platform/internal-logic';
 
 export interface VotingRound {
   id: string;
   title: string;
+  category: string;
   description: string;
-  status: 'DRAFT' | 'ACTIVE' | 'FINALIZED';
-  startTime?: string;
-  endTime?: string;
+  status: 'ACTIVE' | 'DRAFT' | 'FINALIZED';
+  createdBy?: string;
+  createdAt?: string;
 }
 
 export interface VotingEntry {
@@ -23,9 +25,11 @@ export interface VotingEntry {
   roundId: string;
   title: string;
   description: string;
+  category?: string;
   submitterId?: string;
   submitterUsername?: string;
   submitterAvatar?: string;
+  createdAt?: string;
 }
 
 export interface CastBallotDto {
@@ -43,87 +47,93 @@ export interface StoredBallotRecord {
   timestamp?: number;
 }
 
-// Default seed rounds for the voting engine
+// Initial seed rounds managed by admins
 const SEED_ROUNDS: VotingRound[] = [
   {
-    id: 'round-scene-pitch-42',
-    title: 'Minecraft Movie: Act 1 Scene Pitches',
-    description: 'Rank your top 3 favorite community script scenes (3pts for 1st, 2pts for 2nd, 1pt for 3rd).',
+    id: 'round-01',
+    title: 'Round 1: Narrative & Scene Concepts',
+    category: 'Narrative',
+    description: 'Active community voting round for scene proposals and concept narratives.',
     status: 'ACTIVE',
+    createdBy: 'SystemAdmin',
+    createdAt: '2026-09-13',
   },
   {
-    id: 'round-mob-redesign-12',
-    title: 'Nether Mob Overhaul Submissions',
-    description: 'Community ideas for Nether fortress boss mechanics.',
-    status: 'FINALIZED',
+    id: 'round-02',
+    title: 'Round 2: Character Dynamics',
+    category: 'Characters',
+    description: 'Community voting round for character interactions and dialogue arcs.',
+    status: 'DRAFT',
+    createdBy: 'SystemAdmin',
+    createdAt: '2026-09-13',
   },
 ];
 
+// Exactly 1 initial test entry throughout the system
 const SEED_ENTRIES: VotingEntry[] = [
   {
-    id: 'pitch-nether-heist',
-    roundId: 'round-scene-pitch-42',
-    title: 'The Bastion Remnant Heist',
-    description: 'Steve, Alex, and a rogue Piglin orchestrate an infiltration to recover a Netherite lodestone.',
-    submitterUsername: 'Eva Robinson',
-    submitterId: 'usr-eva-1',
-  },
-  {
-    id: 'pitch-ender-dragon-origin',
-    roundId: 'round-scene-pitch-42',
-    title: 'The Dragon of the End: Prologue',
-    description: 'A cinematic opening recounting the ancient builders sealing the End dimension and the dragon nest.',
-    submitterUsername: 'Helena Crims',
-    submitterId: 'usr-helena-2',
-  },
-  {
-    id: 'pitch-creeper-sanctuary',
-    roundId: 'round-scene-pitch-42',
-    title: 'The Creeper Sanctuary Encounter',
-    description: 'A comedic travel montage where Alex befriends an anxious charged creeper using cat bells.',
-    submitterUsername: 'Anna Morris',
-    submitterId: 'usr-anna-3',
-  },
-  {
-    id: 'pitch-redstone-revolution',
-    roundId: 'round-scene-pitch-42',
-    title: 'The Redstone Automaton Uprising',
-    description: 'A rogue villager weaponizes flying machines and piston contraptions against an invading raid.',
-    submitterUsername: 'Marcus Vance',
-    submitterId: 'usr-marcus-4',
-  },
-  {
-    id: 'pitch-villager-trading-post',
-    roundId: 'round-scene-pitch-42',
-    title: 'The Emerald Monopoly Negotiation',
-    description: 'A tavern negotiation with an armorer villager over 64 mending books.',
-    submitterUsername: 'Sarah Chen',
-    submitterId: 'usr-sarah-5',
+    id: 'entry-001',
+    roundId: 'round-01',
+    title: 'Initial Concept Proposal',
+    description: 'Reference proposal entry for the active community voting round.',
+    submitterUsername: 'SystemAdmin',
+    submitterId: 'admin-001',
+    createdAt: '2026-09-13',
   },
 ];
 
-const LOCAL_BALLOTS_STORAGE_KEY = 'mcs_local_ballots_pool';
-const LOCAL_ENTRIES_STORAGE_KEY = 'mcs_local_entries_pool';
+const LOCAL_ROUNDS_STORAGE_KEY = 'mcs_local_rounds_v2';
+const LOCAL_BALLOTS_STORAGE_KEY = 'mcs_local_ballots_v2';
+const LOCAL_ENTRIES_STORAGE_KEY = 'mcs_local_entries_v2';
 
-function getLocalStoredEntries(roundId: string): VotingEntry[] {
-  if (typeof window === 'undefined') return SEED_ENTRIES;
-  const raw = localStorage.getItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`);
+function getLocalStoredRounds(): VotingRound[] {
+  if (typeof window === 'undefined') return SEED_ROUNDS;
+  const raw = localStorage.getItem(LOCAL_ROUNDS_STORAGE_KEY);
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     } catch {
-      // fallback to seeds
+      // fallback
     }
   }
-  localStorage.setItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`, JSON.stringify(SEED_ENTRIES));
-  return SEED_ENTRIES;
+  localStorage.setItem(LOCAL_ROUNDS_STORAGE_KEY, JSON.stringify(SEED_ROUNDS));
+  return SEED_ROUNDS;
+}
+
+function saveLocalRound(round: VotingRound): void {
+  const current = getLocalStoredRounds();
+  const filtered = current.filter((r) => r.id !== round.id);
+  filtered.push(round);
+  localStorage.setItem(LOCAL_ROUNDS_STORAGE_KEY, JSON.stringify(filtered));
+}
+
+function getLocalStoredEntries(roundId: string): VotingEntry[] {
+  if (typeof window === 'undefined') return SEED_ENTRIES.filter((e) => e.roundId === roundId);
+  const raw = localStorage.getItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // fallback
+    }
+  }
+  const initial = SEED_ENTRIES.filter((e) => e.roundId === roundId);
+  localStorage.setItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`, JSON.stringify(initial));
+  return initial;
 }
 
 function saveLocalEntry(roundId: string, entry: VotingEntry): void {
   const current = getLocalStoredEntries(roundId);
   current.push(entry);
   localStorage.setItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`, JSON.stringify(current));
+}
+
+function deleteLocalEntry(roundId: string, entryId: string): void {
+  const current = getLocalStoredEntries(roundId);
+  const filtered = current.filter((e) => e.id !== entryId);
+  localStorage.setItem(`${LOCAL_ENTRIES_STORAGE_KEY}_${roundId}`, JSON.stringify(filtered));
 }
 
 function getLocalStoredBallots(roundId: string): Ballot[] {
@@ -133,24 +143,10 @@ function getLocalStoredBallots(roundId: string): Ballot[] {
     try {
       return JSON.parse(raw);
     } catch {
-      // ignore parse errors and fallback
+      // fallback
     }
   }
-
-  // Pre-fill realistic ballots so rankings compute accurately
-  const initial: Ballot[] = [];
-  const entries = SEED_ENTRIES.map((e) => e.id);
-  for (let i = 0; i < 40; i++) {
-    const shuffled = [...entries].sort(() => Math.random() - 0.5);
-    initial.push({
-      voterId: `discord-voter-${1000 + i}`,
-      rank1: shuffled[0]!,
-      rank2: shuffled[1]!,
-      rank3: shuffled[2]!,
-    });
-  }
-  localStorage.setItem(`${LOCAL_BALLOTS_STORAGE_KEY}_${roundId}`, JSON.stringify(initial));
-  return initial;
+  return [];
 }
 
 function saveLocalBallot(roundId: string, ballot: Ballot): void {
@@ -168,18 +164,22 @@ export function useRounds() {
       try {
         return await apiRequest<VotingRound[]>('/rounds');
       } catch {
-        return SEED_ROUNDS;
+        return getLocalStoredRounds();
       }
     },
     staleTime: 1000 * 60 * 2,
   });
 }
 
+export { useRounds as useVotingRounds };
+
 // Get active round
-export function useActiveRound() {
+export function useActiveRound(selectedRoundId?: string) {
   const { data: rounds = [], isLoading } = useRounds();
-  const activeRound = rounds.find((r) => r.status === 'ACTIVE') || rounds[0] || SEED_ROUNDS[0];
-  return { activeRound, isLoading };
+  const activeRound = selectedRoundId
+    ? rounds.find((r) => r.id === selectedRoundId) || rounds.find((r) => r.status === 'ACTIVE') || rounds[0]
+    : rounds.find((r) => r.status === 'ACTIVE') || rounds[0] || SEED_ROUNDS[0];
+  return { activeRound, rounds, isLoading };
 }
 
 // Fetch all entry submissions for a round
@@ -248,13 +248,13 @@ export function useLiveLeaderboard(roundId: string, entries: VotingEntry[]) {
   });
 }
 
-// Poll live Batman raid telemetry
+// Poll live telemetry
 export function useLiveTelemetry(roundId: string, leaderboard: EntryScoreBreakdown[]) {
-  return useQuery({
+  return useQuery<RaidTelemetry[]>({
     queryKey: ['rounds', roundId, 'telemetry', leaderboard],
     queryFn: async () => {
       try {
-        return await apiRequest<any>(`/rounds/${roundId}/telemetry`);
+        return await apiRequest<RaidTelemetry[]>(`/rounds/${roundId}/telemetry`);
       } catch {
         return leaderboard.map((item) => analyze_raid_risk(item, 0.1));
       }
@@ -264,7 +264,7 @@ export function useLiveTelemetry(roundId: string, leaderboard: EntryScoreBreakdo
   });
 }
 
-// Mutation to cast a ballot and invalidate stale queries
+// Mutation to cast a ballot
 export function useCastBallot(roundId: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -276,7 +276,7 @@ export function useCastBallot(roundId: string) {
           method: 'POST',
           body: JSON.stringify(ballotDto),
         });
-      } catch (err) {
+      } catch {
         if (user) {
           saveLocalBallot(roundId, {
             voterId: user.id || user.discordId,
@@ -297,7 +297,7 @@ export function useCastBallot(roundId: string) {
   });
 }
 
-// Mutation to submit a new pitch
+// Mutation to submit a proposal
 export function useSubmitEntry(roundId: string) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -318,6 +318,7 @@ export function useSubmitEntry(roundId: string) {
           description: payload.description,
           submitterId: user?.id || 'community_creator',
           submitterUsername: user?.discordUsername || 'Community Creator',
+          createdAt: new Date().toISOString().split('T')[0],
         };
         saveLocalEntry(roundId, newEntry);
         return newEntry;
@@ -326,6 +327,88 @@ export function useSubmitEntry(roundId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'entries'] });
       queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'leaderboard'] });
+    },
+  });
+}
+
+// Admin Mutation: Create a new categorized round
+export function useCreateRound() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (payload: { title: string; category: string; description: string; status: 'ACTIVE' | 'DRAFT' | 'FINALIZED' }) => {
+      try {
+        return await apiRequest<VotingRound>('/rounds', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        const cleanId = `round-${payload.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString().slice(-4)}`;
+        const newRound: VotingRound = {
+          id: cleanId,
+          title: payload.title,
+          category: payload.category,
+          description: payload.description,
+          status: payload.status,
+          createdBy: user?.discordUsername || 'Administrator',
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        saveLocalRound(newRound);
+        return newRound;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rounds'] });
+    },
+  });
+}
+
+// Admin Mutation: Moderate / Delete an entry from a round
+export function useDeleteEntry(roundId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (entryId: string) => {
+      try {
+        return await apiRequest(`/rounds/${roundId}/entries/${entryId}`, {
+          method: 'DELETE',
+        });
+      } catch {
+        deleteLocalEntry(roundId, entryId);
+        return { success: true };
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'entries'] });
+      queryClient.invalidateQueries({ queryKey: ['rounds', roundId, 'leaderboard'] });
+    },
+  });
+}
+
+// Admin Mutation: Update round status
+export function useUpdateRoundStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ roundId, status }: { roundId: string; status: 'ACTIVE' | 'DRAFT' | 'FINALIZED' }) => {
+      try {
+        return await apiRequest(`/rounds/${roundId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status }),
+        });
+      } catch {
+        const rounds = getLocalStoredRounds();
+        const found = rounds.find((r) => r.id === roundId);
+        if (found) {
+          found.status = status;
+          localStorage.setItem(LOCAL_ROUNDS_STORAGE_KEY, JSON.stringify(rounds));
+        }
+        return { success: true };
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rounds'] });
     },
   });
 }

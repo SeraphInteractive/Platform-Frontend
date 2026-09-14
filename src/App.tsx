@@ -1,22 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { SettingsProvider, useSettings } from './context/SettingsContext.tsx';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import { Navbar, NavTabId } from './components/Navbar.tsx';
+import { CommandPalette } from './components/CommandPalette.tsx';
 import { CreatePitchModal } from './components/CreatePitchModal.tsx';
+import { CreateRoundModal } from './components/CreateRoundModal.tsx';
+import { BlazeTransitionOverlay, type BlazeTransitionRef } from './components/BlazeTransitionOverlay.tsx';
+import { LandingPage } from './views/Landing/LandingPage.tsx';
 import { OverviewDashboard } from './views/Dashboard/OverviewDashboard.tsx';
 import { PitchCatalog } from './views/VoterApp/PitchCatalog.tsx';
 import { BallotBox } from './views/VoterApp/BallotBox.tsx';
 import { PublicLeaderboard } from './views/VoterApp/PublicLeaderboard.tsx';
 import { DevWorkbench } from './views/DevWorkbench/DevWorkbench.tsx';
 import { SettingsPage, SettingsSubTab } from './views/Settings/SettingsPage.tsx';
+import { DocsPage, DocsSectionId } from './views/Docs/DocsPage.tsx';
 import {
   useActiveRound,
+  useVotingRounds,
   useRoundEntries,
   useMyBallot,
   useLiveLeaderboard,
   useCastBallot,
+  type VotingRound,
 } from './hooks/useVotingApi.ts';
+import { sounds } from './utils/soundEffects.ts';
 
 // TanStack Query client with real-time polling defaults
 const queryClient = new QueryClient({
@@ -31,19 +39,25 @@ const queryClient = new QueryClient({
 
 const MainDashboardLayout: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<NavTabId>('overview');
+  const [activeTab, setActiveTab] = useState<NavTabId>('landing');
   const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('account_info');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [docsSection, setDocsSection] = useState<DocsSectionId>('overview');
   const [isCreatePitchOpen, setIsCreatePitchOpen] = useState(false);
+  const [isCreateRoundOpen, setIsCreateRoundOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
+  const { data: rounds = [] } = useVotingRounds();
   const { activeRound } = useActiveRound();
-  const roundId = activeRound?.id || 'round-scene-pitch-42';
+  const [selectedRoundId, setSelectedRoundId] = useState<string>('');
 
-  const { data: entries = [] } = useRoundEntries(roundId);
-  const { data: myBallot } = useMyBallot(roundId);
-  const { data: boardData } = useLiveLeaderboard(roundId, entries);
+  const currentRoundId = selectedRoundId || activeRound?.id || 'round-01';
+  const currentRound = rounds.find((r: VotingRound) => r.id === currentRoundId) || activeRound;
 
-  // Shared 3-2-1 ballot selection state
+  const { data: entries = [] } = useRoundEntries(currentRoundId);
+  const { data: myBallot } = useMyBallot(currentRoundId);
+  const { data: boardData } = useLiveLeaderboard(currentRoundId, entries);
+
+  // Shared ballot selection state
   const [rank1, setRank1] = useState<string>('');
   const [rank2, setRank2] = useState<string>('');
   const [rank3, setRank3] = useState<string>('');
@@ -55,10 +69,26 @@ const MainDashboardLayout: React.FC = () => {
       setRank1(myBallot.rank1);
       setRank2(myBallot.rank2);
       setRank3(myBallot.rank3);
+    } else {
+      setRank1('');
+      setRank2('');
+      setRank3('');
     }
-  }, [myBallot]);
+  }, [myBallot, currentRoundId]);
 
-  const castBallotMutation = useCastBallot(roundId);
+  // Global Cmd+K / Ctrl+K keyboard shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const castBallotMutation = useCastBallot(currentRoundId);
 
   // Rank assignment handler ensuring uniqueness across the 3 slots
   const handleSelectRank = (rank: 1 | 2 | 3, entryId: string) => {
@@ -92,135 +122,214 @@ const MainDashboardLayout: React.FC = () => {
         rank2,
         rank3,
       });
-      setBallotSuccessMessage('Your 3-2-1 ballot was successfully recorded in the live pool.');
+      sounds.playLevelUp();
+      setBallotSuccessMessage('Your ballot was successfully recorded in the live pool.');
       setTimeout(() => setBallotSuccessMessage(null), 5000);
     } catch (err: unknown) {
+      sounds.playReset();
       alert(`Failed to cast ballot: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
-  // Filter entries if search query is provided
-  const filteredEntries = entries.filter((e) =>
-    searchQuery
-      ? e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.id.toLowerCase().includes(searchQuery.toLowerCase())
-      : true
-  );
+  const blazeRef = useRef<BlazeTransitionRef | null>(null);
+  const { settings } = useSettings();
+
+  const handleTabChange = (newTab: NavTabId) => {
+    if (newTab === activeTab) return;
+    if (settings.reducedMotion) {
+      setActiveTab(newTab);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      return;
+    }
+    blazeRef.current?.startTransition(() => {
+      setActiveTab(newTab);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
+  };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Top Navbar with search, submit pitch button, and role-based tabs */}
+      {/* Top Navbar with role-based tabs, theme toggle, and profile */}
       <Navbar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         onNavigateSettings={(subTab) => {
           if (subTab) setSettingsSubTab(subTab);
-          setActiveTab('settings');
+          handleTabChange('settings');
         }}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
         onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
       />
 
       {/* Main Content Area */}
       <main className="dashboard-container" style={{ flex: 1 }}>
-        {activeTab === 'overview' && (
-          <OverviewDashboard
-            onNavigateTab={setActiveTab}
-            onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
-            onSelectEntryForVote={(id) => {
-              if (!rank1) setRank1(id);
-              else if (!rank2) setRank2(id);
-              else if (!rank3) setRank3(id);
-              else setRank1(id);
-              setActiveTab('ballot');
-            }}
-          />
-        )}
-
-        {activeTab === 'ballot' && (
-          <div className="tab-content-area">
-            {ballotSuccessMessage && (
-              <div className="callout callout-success" style={{ marginBottom: 16 }}>
-                {ballotSuccessMessage}
-              </div>
-            )}
-
-            {/* 3-2-1 Ballot Slots */}
-            <BallotBox
+        <div key={activeTab} className="page-view-wrapper">
+          {activeTab === 'landing' && (
+            <LandingPage
+              activeRound={currentRound}
               entries={entries}
-              rank1={rank1}
-              rank2={rank2}
-              rank3={rank3}
-              myBallot={myBallot}
-              isSubmitting={castBallotMutation.isPending}
-              onClearSlot={handleClearSlot}
-              onSubmitBallot={handleSubmitBallot}
-              voterId={user?.id || user?.discordId || 'community_voter'}
-            />
-
-            {/* Pitch Catalog for easy ranking selection */}
-            <PitchCatalog
-              entries={filteredEntries}
-              selectedRank1={rank1}
-              selectedRank2={rank2}
-              selectedRank3={rank3}
-              onSelectRank={handleSelectRank}
-              onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
-            />
-          </div>
-        )}
-
-        {activeTab === 'pitches' && (
-          <div className="tab-content-area">
-            <PitchCatalog
-              entries={filteredEntries}
-              selectedRank1={rank1}
-              selectedRank2={rank2}
-              selectedRank3={rank3}
-              onSelectRank={(r, id) => {
-                handleSelectRank(r, id);
-                setActiveTab('ballot');
+              totalBallots={boardData?.totalBallots || 0}
+              totalPointsAwarded={boardData?.totalPointsAwarded || 0}
+              expectedPoints={boardData?.expectedPoints || 0}
+              isConserved={boardData?.isConserved ?? true}
+              onNavigateTab={handleTabChange}
+              onNavigateDocs={(section) => {
+                setDocsSection(section);
+                handleTabChange('docs');
               }}
               onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+              onSelectEntryForVote={(id) => {
+                if (!rank1) setRank1(id);
+                else if (!rank2) setRank2(id);
+                else if (!rank3) setRank3(id);
+                else setRank1(id);
+                handleTabChange('ballot');
+              }}
             />
-          </div>
-        )}
+          )}
 
-        {activeTab === 'leaderboard' && (
-          <div className="tab-content-area">
-            <PublicLeaderboard
-              entries={entries}
-              leaderboard={boardData?.leaderboard}
-              totalBallots={boardData?.totalBallots}
-              expectedPoints={boardData?.expectedPoints}
+          {activeTab === 'overview' && (
+            <OverviewDashboard
+              onNavigateTab={handleTabChange}
+              onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+              onSelectEntryForVote={(id) => {
+                if (!rank1) setRank1(id);
+                else if (!rank2) setRank2(id);
+                else if (!rank3) setRank3(id);
+                else setRank1(id);
+                handleTabChange('ballot');
+              }}
             />
-          </div>
-        )}
+          )}
 
-        {activeTab === 'diagnostics' && (
-          <div className="tab-content-area">
-            <DevWorkbench />
-          </div>
-        )}
+          {activeTab === 'ballot' && (
+            <div className="tab-content-area">
+              {ballotSuccessMessage && (
+                <div className="callout callout-success" style={{ marginBottom: 16 }}>
+                  {ballotSuccessMessage}
+                </div>
+              )}
 
-        {activeTab === 'settings' && (
-          <SettingsPage
-            initialSubTab={settingsSubTab}
-            onNavigateTab={setActiveTab}
-            onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
-          />
-        )}
+              {/* Ballot Slots */}
+              <BallotBox
+                entries={entries}
+                rank1={rank1}
+                rank2={rank2}
+                rank3={rank3}
+                myBallot={myBallot}
+                isSubmitting={castBallotMutation.isPending}
+                onClearSlot={handleClearSlot}
+                onSubmitBallot={handleSubmitBallot}
+                voterId={user?.id || user?.discordId || 'community_voter'}
+              />
+
+              {/* Proposal Catalog for easy ranking selection */}
+              <PitchCatalog
+                entries={entries}
+                activeRound={currentRound}
+                rounds={rounds}
+                selectedRoundId={currentRoundId}
+                onSelectRound={setSelectedRoundId}
+                selectedRank1={rank1}
+                selectedRank2={rank2}
+                selectedRank3={rank3}
+                onSelectRank={handleSelectRank}
+                onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+                onOpenCreateRound={() => setIsCreateRoundOpen(true)}
+              />
+            </div>
+          )}
+
+          {activeTab === 'pitches' && (
+            <div className="tab-content-area">
+              <PitchCatalog
+                entries={entries}
+                activeRound={currentRound}
+                rounds={rounds}
+                selectedRoundId={currentRoundId}
+                onSelectRound={setSelectedRoundId}
+                selectedRank1={rank1}
+                selectedRank2={rank2}
+                selectedRank3={rank3}
+                onSelectRank={(r, id) => {
+                  handleSelectRank(r, id);
+                  handleTabChange('ballot');
+                }}
+                onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+                onOpenCreateRound={() => setIsCreateRoundOpen(true)}
+              />
+            </div>
+          )}
+
+          {activeTab === 'leaderboard' && (
+            <div className="tab-content-area">
+              <PublicLeaderboard
+                entries={entries}
+                leaderboard={boardData?.leaderboard}
+                totalBallots={boardData?.totalBallots}
+                expectedPoints={boardData?.expectedPoints}
+              />
+            </div>
+          )}
+
+          {activeTab === 'docs' && (
+            <div className="tab-content-area">
+              <DocsPage
+                initialSection={docsSection}
+                onNavigateTab={handleTabChange}
+                onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+              />
+            </div>
+          )}
+
+          {activeTab === 'diagnostics' && (
+            <div className="tab-content-area">
+              <DevWorkbench />
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsPage
+              initialSubTab={settingsSubTab}
+              onNavigateTab={handleTabChange}
+              onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+            />
+          )}
+        </div>
       </main>
 
-      {/* Submit Pitch Modal */}
+      {/* Cinematic Blaze Transition Overlay */}
+      <BlazeTransitionOverlay ref={blazeRef} reducedMotion={settings.reducedMotion} />
+
+      {/* Quick Command Palette Modal */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigateTab={handleTabChange}
+        onNavigateDocs={(section) => {
+          setDocsSection(section);
+          handleTabChange('docs');
+        }}
+        onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+      />
+
+      {/* Submit Proposal Modal */}
       <CreatePitchModal
         isOpen={isCreatePitchOpen}
-        roundId={roundId}
+        roundId={currentRoundId}
         onClose={() => setIsCreatePitchOpen(false)}
         onCreated={() => {
           setIsCreatePitchOpen(false);
+          setActiveTab('pitches');
+        }}
+      />
+
+      {/* Create Round Modal (Admin Only) */}
+      <CreateRoundModal
+        isOpen={isCreateRoundOpen}
+        onClose={() => setIsCreateRoundOpen(false)}
+        onCreated={(newRoundId) => {
+          setIsCreateRoundOpen(false);
+          setSelectedRoundId(newRoundId);
           setActiveTab('pitches');
         }}
       />
@@ -255,8 +364,9 @@ export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <MainDashboardLayout />
-        <ReactQueryDevtools initialIsOpen={false} />
+        <SettingsProvider>
+          <MainDashboardLayout />
+        </SettingsProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

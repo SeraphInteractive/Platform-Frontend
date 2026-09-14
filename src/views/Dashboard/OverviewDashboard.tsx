@@ -77,31 +77,31 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
               <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>
-                Active Round Standings ({entries.length} Pitches Registered)
+                Standings
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Live 3-2-1 ranked consensus rankings updated automatically every 3 seconds.
+                Live consensus from verified ballots.
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8 }}>
               <button
-                className="btn-subtle"
+                className="btn btn-secondary btn-sm"
                 onClick={onOpenCreatePitch}
               >
-                + Submit Pitch
+                + Submit Proposal
               </button>
               <button
-                className="btn-dark"
+                className="btn btn-primary btn-sm"
                 onClick={() => onNavigateTab('ballot')}
               >
-                Cast 3-2-1 Ballot
+                Cast Ballot
               </button>
               <button
-                className="btn-subtle"
+                className="btn btn-secondary btn-sm"
                 onClick={() => onNavigateTab('leaderboard')}
               >
-                Full Leaderboard
+                Leaderboard
               </button>
             </div>
           </div>
@@ -111,55 +111,63 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({
               <thead>
                 <tr>
                   <th style={{ width: 60 }}>Rank</th>
-                  <th>Pitch Title</th>
+                  <th>Proposal Title</th>
                   <th>Creator</th>
-                  <th style={{ textAlign: 'center' }}>1st Place (3p)</th>
-                  <th style={{ textAlign: 'center' }}>2nd Place (2p)</th>
-                  <th style={{ textAlign: 'center' }}>3rd Place (1p)</th>
+                  <th style={{ textAlign: 'center' }}>1st (3p)</th>
+                  <th style={{ textAlign: 'center' }}>2nd (2p)</th>
+                  <th style={{ textAlign: 'center' }}>3rd (1p)</th>
                   <th style={{ textAlign: 'right' }}>Total Points</th>
-                  <th style={{ width: 120, textAlign: 'center' }}>Action</th>
+                  <th style={{ width: 130, textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {leaderboard.slice(0, 5).map((item, idx) => {
-                  const entry = entries.find((e) => e.id === item.entryId);
-                  return (
-                    <tr key={item.entryId}>
-                      <td style={{ fontWeight: 800 }} className="mono">
-                        #{idx + 1}
-                      </td>
-                      <td style={{ fontWeight: 600 }}>
-                        {entry?.title || item.entryId}
-                      </td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-                        {entry?.submitterUsername || 'Community Creator'}
-                      </td>
-                      <td style={{ textAlign: 'center' }} className="mono">
-                        {item.rank1Count}
-                      </td>
-                      <td style={{ textAlign: 'center' }} className="mono">
-                        {item.rank2Count}
-                      </td>
-                      <td style={{ textAlign: 'center' }} className="mono">
-                        {item.rank3Count}
-                      </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--accent-green)' }} className="mono">
-                        {item.rawScore} pts
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button
-                          className="btn-subtle btn-sm"
-                          onClick={() => {
-                            if (onSelectEntryForVote) onSelectEntryForVote(item.entryId);
-                            onNavigateTab('ballot');
-                          }}
-                        >
-                          Vote for This
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {leaderboard.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
+                      No verified ballots or rankings recorded yet for this round.
+                    </td>
+                  </tr>
+                ) : (
+                  leaderboard.slice(0, 5).map((item, idx) => {
+                    const entry = entries.find((e) => e.id === item.entryId);
+                    return (
+                      <tr key={item.entryId}>
+                        <td style={{ fontWeight: 800 }} className="mono">
+                          #{idx + 1}
+                        </td>
+                        <td style={{ fontWeight: 600 }}>
+                          {entry?.title || item.entryId}
+                        </td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                          {entry?.submitterUsername || 'Community Creator'}
+                        </td>
+                        <td style={{ textAlign: 'center' }} className="mono">
+                          {item.rank1Count}
+                        </td>
+                        <td style={{ textAlign: 'center' }} className="mono">
+                          {item.rank2Count}
+                        </td>
+                        <td style={{ textAlign: 'center' }} className="mono">
+                          {item.rank3Count}
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--accent-green)' }} className="mono">
+                          {item.rawScore} pts
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              if (onSelectEntryForVote) onSelectEntryForVote(item.entryId);
+                              onNavigateTab('ballot');
+                            }}
+                          >
+                            Select for Ballot
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>
