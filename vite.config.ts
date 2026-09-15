@@ -11,7 +11,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: 'http://35.192.18.39',
+        target: process.env.VITE_API_URL || 'http://localhost:3333',
         changeOrigin: true,
       },
     },

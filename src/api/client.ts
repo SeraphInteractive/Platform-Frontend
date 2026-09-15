@@ -13,6 +13,11 @@ const DEFAULT_API_URL = (import.meta as unknown as { env: { VITE_API_URL?: strin
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('mcs_api_base_url');
+    // Clear out deprecated Google Cloud IP if stored
+    if (saved && (saved.includes('35.192.18.39') || saved.includes('undefined') || saved.includes('null'))) {
+      localStorage.removeItem('mcs_api_base_url');
+      return DEFAULT_API_URL;
+    }
     if (saved) return saved;
   }
   return DEFAULT_API_URL;
@@ -20,7 +25,11 @@ export function getApiBaseUrl(): string {
 
 export function setApiBaseUrl(url: string): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('mcs_api_base_url', url);
+    if (!url || url.includes('35.192.18.39')) {
+      localStorage.removeItem('mcs_api_base_url');
+    } else {
+      localStorage.setItem('mcs_api_base_url', url);
+    }
   }
 }
 

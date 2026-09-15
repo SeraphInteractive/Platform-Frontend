@@ -23,9 +23,6 @@ export const TermsPage: React.FC<TermsPageProps> = ({
         style={{ padding: '28px 36px', background: 'var(--bg-card)' }}
       >
         <div>
-          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-            Legal Agreement
-          </div>
           <h1 style={{ fontSize: '26px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', margin: 0 }}>
             Terms
           </h1>

@@ -377,9 +377,6 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>
-              Roadmap v20
-            </div>
             <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.03em', margin: 0 }}>
               Progress
             </h1>
@@ -416,10 +413,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
       <div className="card" style={{ padding: '36px 40px', background: 'var(--bg-card)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 28 }}>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              Timeline
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-main)', marginTop: 2, letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
               Pipeline
             </div>
           </div>
@@ -757,10 +751,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
       {/* 4-Phase Roadmap Breakdown (Clean Large Typography - No Buttons) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Roadmap
-          </div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', marginTop: 2, letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
             Phases
           </div>
         </div>
@@ -860,10 +851,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
 
       {/* Production Ledger Section Header */}
       <div>
-        <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          Updates
-        </div>
-        <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', marginTop: 2, letterSpacing: '-0.02em' }}>
+        <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
           Ledger
         </div>
       </div>
@@ -1074,8 +1062,8 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
 
       {/* Post / Edit Update Modal */}
       {isModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
             <div className="card-header" style={{ marginBottom: 16 }}>
               <div>
                 <div className="card-title">{editingUpdate ? 'Edit Update' : 'Post Numbered Update'}</div>

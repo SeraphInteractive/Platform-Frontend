@@ -57,13 +57,9 @@ export const ConservationChart: React.FC<ConservationChartProps> = ({
     deltaPoints.push({ x: ballotNum, y: diff });
   });
 
-  // If no ballots, populate baseline up to 10
+  // If no ballots, do not inject fake points. Keep at origin.
   if (ballotCount === 0) {
-    for (let i = 1; i <= 10; i++) {
-      theoretical6NPoints.push({ x: i, y: i * 6 });
-      liveAwardedPoints.push({ x: i, y: i * 6 });
-      deltaPoints.push({ x: i, y: 0 });
-    }
+    theoretical6NPoints.push({ x: 10, y: 60 });
   }
 
   // Window bounds calculation based on timeSpan
@@ -100,11 +96,11 @@ export const ConservationChart: React.FC<ConservationChartProps> = ({
           align: 'end',
         },
       ],
-      description: `Live accumulated score (${totalPointsAwarded} pts) across processed ballots.`,
+      description: 'Sum of awarded scores across processed ballots.',
     },
     {
       id: 'theoretical_6n',
-      name: 'Theoretical 6N Bound',
+      name: 'Invariant (y = 6x)',
       color: 'var(--text-muted)',
       strokeWidth: 2,
       dashArray: '4,4',
@@ -113,16 +109,16 @@ export const ConservationChart: React.FC<ConservationChartProps> = ({
         {
           x: Math.round((windowMin + windowMax) / 2),
           y: Math.round(((windowMin + windowMax) / 2) * 6),
-          text: 'Invariant: y = 6x',
+          text: 'y = 6x',
           color: 'var(--text-muted)',
           align: 'middle',
         },
       ],
-      description: `Mathematical baseline (6 points generated per ballot = ${expectedPoints} pts).`,
+      description: 'Theoretical 6N boundary where w = [3, 2, 1]^T.',
     },
     {
       id: 'leak_delta',
-      name: 'Point Leak (Delta)',
+      name: 'Delta (Leak)',
       color: isConserved ? 'var(--border-strong)' : '#ef4444',
       strokeWidth: 2,
       points: filteredDelta,
@@ -137,50 +133,7 @@ export const ConservationChart: React.FC<ConservationChartProps> = ({
       ],
       description: isConserved
         ? 'Zero point leakage detected (Delta = 0).'
-        : `Point leak anomaly detected (${delta} pts variance).`,
-    },
-  ];
-
-  // 2. Tutorial Reference Series (Underneath)
-  const tutorialSeries: TrajectorySeries[] = [
-    {
-      id: 'tut_6n_invariant',
-      name: '6N Law (y = 6x)',
-      color: '#10b981',
-      strokeWidth: 2.5,
-      points: [
-        { x: 0, y: 0 },
-        { x: 2, y: 12 },
-        { x: 4, y: 24 },
-        { x: 6, y: 36 },
-        { x: 8, y: 48 },
-        { x: 10, y: 60 },
-        { x: 12, y: 72 },
-      ],
-      annotations: [
-        { x: 6, y: 40, text: 'Strict Conservation (y = 6x)', color: '#10b981' },
-      ],
-      description: 'Ideal closed-system conservation where each voter awards 3+2+1=6 points.',
-    },
-    {
-      id: 'tut_leak_scenario',
-      name: 'Leak Drift Example',
-      color: '#ef4444',
-      strokeWidth: 2,
-      dashArray: '3,3',
-      points: [
-        { x: 0, y: 0 },
-        { x: 2, y: 12 },
-        { x: 4, y: 20 },
-        { x: 6, y: 28 },
-        { x: 8, y: 36 },
-        { x: 10, y: 42 },
-        { x: 12, y: 50 },
-      ],
-      annotations: [
-        { x: 8, y: 32, text: 'Point Leak Drift (Violation)', color: '#ef4444' },
-      ],
-      description: 'Defective round with missing points or partial slot dropping.',
+        : `Point leak variance: Delta = ${delta}.`,
     },
   ];
 
@@ -196,12 +149,38 @@ export const ConservationChart: React.FC<ConservationChartProps> = ({
   const yMax = Math.max(60, Math.ceil((maxLiveScore * 1.15) / 20) * 20);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* 1. Live 6N Conservation Trajectory Graph (On Top) */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Mathematical Invariants Formula Strip */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span className="badge badge-engine mono" style={{ fontSize: '11px', padding: '4px 8px' }}>
+          Invariant: sum(S_j) = 6N
+        </span>
+        <span className="badge badge-engine mono" style={{ fontSize: '11px', padding: '4px 8px' }}>
+          Delta = sum(S_j) - 6N
+        </span>
+        <span className="badge badge-engine mono" style={{ fontSize: '11px', padding: '4px 8px' }}>
+          w = [3, 2, 1]^T
+        </span>
+        <span
+          className="mono"
+          style={{
+            fontSize: '11px',
+            padding: '3px 8px',
+            borderRadius: 4,
+            fontWeight: 800,
+            background: isConserved ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+            color: isConserved ? '#10b981' : '#ef4444',
+            border: `1px solid ${isConserved ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+          }}
+        >
+          {isConserved ? 'System Conserved (Delta = 0)' : `Leak Variance (Delta = ${delta})`}
+        </span>
+      </div>
+
+      {/* 1. Live 6N Conservation Trajectory Graph */}
       <TrajectoryCoordinateGraph
-        title="Live 6N Conservation Trajectory"
-        xLabel="Ballots Sequence (N)"
-        yLabel="Cumulative Points Awarded (pts)"
+        xLabel="Ballot Index (N)"
+        yLabel="Cumulative Points (pts)"
         xMin={windowMin}
         xMax={windowMax}
         yMin={0}
@@ -209,93 +188,90 @@ export const ConservationChart: React.FC<ConservationChartProps> = ({
         xStep={xStep}
         yStep={Math.max(10, Math.round(yMax / 5))}
         series={liveConservationSeries}
-        height={360}
+        height={320}
         xUnit=" ballots"
         yUnit=" pts"
         timeSpans={timeSpanOptions}
         activeTimeSpan={timeSpan}
         onTimeSpanChange={(span) => setTimeSpan(span as 'all' | '10' | '25' | '50')}
+        showHelpGuide={false}
       />
 
-      {/* 2. Visual Conservation Stacked Bar */}
-      <div style={{ background: 'var(--bg-card-muted)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)' }}>
-            Point Allocation Breakdown ({totalBallots} Ballots cast | Total: {totalPointsAwarded} / Expected: {expectedPoints})
-          </div>
-          <span className={`badge ${isConserved ? 'badge-success' : 'badge-danger'}`}>
-            {isConserved ? 'Exact Balance (0.000 Leak)' : `Delta: ${delta} pts`}
+      {/* 2. Visual Conservation Waterfall Breakdown */}
+      <div style={{ background: 'var(--bg-card-muted)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <span className="mono" style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
+            Tier Allocation (R1: {totalR1Points}p | R2: {totalR2Points}p | R3: {totalR3Points}p)
+          </span>
+          <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            N={totalBallots} | Total={totalPointsAwarded} / Expected={expectedPoints}
           </span>
         </div>
 
         {/* Segmented Waterfall Bar */}
-        <div style={{ height: 24, width: '100%', display: 'flex', borderRadius: '6px', overflow: 'hidden', background: 'var(--border-subtle)' }}>
+        <div style={{ height: 20, width: '100%', display: 'flex', borderRadius: '4px', overflow: 'hidden', background: 'var(--border-subtle)' }}>
           <div
-            style={{ width: `${r1Pct}%`, background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '11px', fontWeight: 800, transition: 'width 0.4s ease' }}
+            style={{ width: `${r1Pct}%`, background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '10px', fontWeight: 800, transition: 'width 0.4s ease' }}
             title={`Rank 1 (3p): ${totalR1Points} pts (${r1Pct}%)`}
           >
-            {r1Pct > 12 ? `R1: ${totalR1Points}p` : ''}
+            {r1Pct > 10 ? `R1: ${r1Pct}%` : ''}
           </div>
           <div
-            style={{ width: `${r2Pct}%`, background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '11px', fontWeight: 800, transition: 'width 0.4s ease' }}
+            style={{ width: `${r2Pct}%`, background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '10px', fontWeight: 800, transition: 'width 0.4s ease' }}
             title={`Rank 2 (2p): ${totalR2Points} pts (${r2Pct}%)`}
           >
-            {r2Pct > 12 ? `R2: ${totalR2Points}p` : ''}
+            {r2Pct > 10 ? `R2: ${r2Pct}%` : ''}
           </div>
           <div
-            style={{ width: `${r3Pct}%`, background: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '11px', fontWeight: 800, transition: 'width 0.4s ease' }}
+            style={{ width: `${r3Pct}%`, background: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontSize: '10px', fontWeight: 800, transition: 'width 0.4s ease' }}
             title={`Rank 3 (1p): ${totalR3Points} pts (${r3Pct}%)`}
           >
-            {r3Pct > 12 ? `R3: ${totalR3Points}p` : ''}
+            {r3Pct > 10 ? `R3: ${r3Pct}%` : ''}
           </div>
         </div>
 
-        {/* Legend */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: '11px', color: 'var(--text-muted)', flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-            <span>Rank 1 (3 pts): <strong>{totalR1Points} pts</strong> ({r1Pct}%)</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3b82f6' }} />
-            <span>Rank 2 (2 pts): <strong>{totalR2Points} pts</strong> ({r2Pct}%)</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#a855f7' }} />
-            <span>Rank 3 (1 pt): <strong>{totalR3Points} pts</strong> ({r3Pct}%)</span>
-          </div>
+        {/* Technical Legend */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, fontSize: '11px', color: 'var(--text-muted)', flexWrap: 'wrap', gap: 8 }}>
+          <span className="mono"><strong style={{ color: '#10b981' }}>R1 (3p):</strong> {totalR1Points} pts ({r1Pct}%)</span>
+          <span className="mono"><strong style={{ color: '#3b82f6' }}>R2 (2p):</strong> {totalR2Points} pts ({r2Pct}%)</span>
+          <span className="mono"><strong style={{ color: '#a855f7' }}>R3 (1p):</strong> {totalR3Points} pts ({r3Pct}%)</span>
         </div>
       </div>
 
-      {/* 3. Per-Entry Point Share Horizontal Distribution */}
-      <div style={{ background: 'var(--bg-card-muted)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-        <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 14 }}>
-          Proposal Point Share Across Total Pool
+      {/* 3. Per-Entry Point Share Distribution */}
+      <div style={{ background: 'var(--bg-card-muted)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span className="mono" style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
+            Candidate Score Partition S_j
+          </span>
+          <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            M={leaderboard.length} Candidates
+          </span>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {leaderboard.map((item, idx) => {
             const entrySharePct = totalPointsAwarded > 0 ? ((item.rawScore / totalPointsAwarded) * 100).toFixed(1) : '0.0';
             const barWidth = Math.round((item.rawScore / maxEntryScore) * 100);
 
             return (
-              <div key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 90, fontSize: '11px', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div key={item.entryId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="mono" style={{ width: 110, fontSize: '11px', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   #{idx + 1} {item.entryId}
                 </div>
 
-                <div style={{ flex: 1, height: 12, background: 'var(--border-subtle)', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
+                <div style={{ flex: 1, height: 10, background: 'var(--border-subtle)', borderRadius: 3, overflow: 'hidden', display: 'flex' }}>
                   <div
                     style={{
                       width: `${barWidth}%`,
                       background: idx === 0 ? '#10b981' : '#3b82f6',
-                      borderRadius: 4,
+                      borderRadius: 3,
                       transition: 'width 0.4s ease',
                     }}
                   />
                 </div>
 
-                <div className="mono" style={{ width: 80, textAlign: 'right', fontSize: '11px', fontWeight: 700, color: 'var(--text-main)' }}>
+                <div className="mono" style={{ width: 85, textAlign: 'right', fontSize: '11px', color: 'var(--text-main)' }}>
                   {item.rawScore} pts ({entrySharePct}%)
                 </div>
               </div>
@@ -304,29 +280,9 @@ export const ConservationChart: React.FC<ConservationChartProps> = ({
         </div>
       </div>
 
-      {/* 4. Tutorial Reference Graph (Underneath) */}
-      <div className="card" style={{ padding: '20px', border: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)' }}>
-            Tutorial Reference
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-            Mathematical baseline demonstrating exact 6N slope invariance and leak detection.
-          </div>
-        </div>
-
-        <TrajectoryCoordinateGraph
-          xLabel="Ballots (N)"
-          yLabel="Points (pts)"
-          xMin={0}
-          xMax={12}
-          yMin={0}
-          yMax={80}
-          xStep={2}
-          yStep={20}
-          series={tutorialSeries}
-          height={300}
-        />
+      {/* Technical Summary Line */}
+      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0' }}>
+        Sum of candidate raw scores strictly conserves 6N points. Delta indicates leakage or orphaned rank references.
       </div>
     </div>
   );

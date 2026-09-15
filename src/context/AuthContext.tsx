@@ -43,6 +43,7 @@ interface AuthContextType {
   isBarred: boolean;
   loginWithDiscord: () => void;
   setAuthToken: (token: string) => void;
+  loginAsUser: (profile: UserProfile) => void;
   addWarning: () => void;
   clearWarnings: () => void;
   logout: () => void;
@@ -212,10 +213,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     staleTime: 1000 * 60 * 15,
   });
 
+  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('mcs_logged_out') === 'true';
+    }
+    return false;
+  });
+
   const rawUser = apiUser || sessionUser;
   const isBarred = warnings >= 3;
 
-  const activeUser: UserProfile | null = rawUser
+  const activeUser: UserProfile | null = isLoggedOut
+    ? null
+    : rawUser
     ? {
         ...rawUser,
         role: resolveDiscordRole(rawUser),
@@ -238,17 +248,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const setAuthToken = (newToken: string) => {
+    localStorage.removeItem('mcs_logged_out');
+    setIsLoggedOut(false);
     localStorage.setItem(TOKEN_KEY, newToken);
     setToken(newToken);
     queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
   };
 
   const loginWithDiscord = () => {
+    localStorage.removeItem('mcs_logged_out');
+    setIsLoggedOut(false);
     const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
     window.location.href = `${baseUrl}/auth/discord`;
   };
 
+  const loginAsUser = (profile: UserProfile) => {
+    localStorage.removeItem('mcs_logged_out');
+    setIsLoggedOut(false);
+    localStorage.setItem(SESSION_USER_KEY, JSON.stringify(profile));
+    setSessionUser(profile);
+    queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+  };
+
   const logout = () => {
+    localStorage.setItem('mcs_logged_out', 'true');
+    setIsLoggedOut(true);
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(SESSION_USER_KEY);
     setToken(null);
@@ -267,6 +291,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isBarred,
         loginWithDiscord,
         setAuthToken,
+        loginAsUser,
         addWarning,
         clearWarnings,
         logout,

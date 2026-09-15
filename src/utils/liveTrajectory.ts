@@ -37,7 +37,7 @@ export function computeLiveTrajectories(
   const totalBallots = ballots.length;
   const totalSubmissions = entries.length;
 
-  // Fallback for 0 ballots
+  // True zero state for 0 ballots
   if (ballots.length === 0) {
     const emptySeries: TrajectorySeries[] = entries.slice(0, maxDisplayEntries).map((entry, idx) => {
       const col = SERIES_COLORS[idx % SERIES_COLORS.length]!;
@@ -46,12 +46,9 @@ export function computeLiveTrajectories(
         name: entry.title,
         color: col.color,
         strokeWidth: 2.2,
-        points: [
-          { x: 0, y: 0 },
-          { x: 12, y: 0 },
-        ],
-        annotations: [{ x: 6, y: 3, text: 'Awaiting ballots', color: col.accent }],
-        description: 'Standby awaiting incoming community ballots.',
+        points: [{ x: 0, y: 0 }],
+        annotations: [{ x: 0, y: 0, text: '0 pts', color: col.accent, align: 'start' }],
+        description: 'Standby awaiting incoming live ballots.',
       };
     });
 

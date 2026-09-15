@@ -112,7 +112,7 @@ export const Footer: React.FC<FooterProps> = ({
                 onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-main)')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
               >
-                Terminal
+                Dashboard
               </button>
             </li>
           </ul>

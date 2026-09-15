@@ -51,7 +51,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     { id: 'nav-docs', category: 'Navigation', title: 'Open Documentation', hint: 'Tech Specs', onSelect: () => onNavigateTab('docs') },
     { id: 'nav-grabbox', category: 'Navigation', title: 'Go to GrabBox', hint: '3D Shot Dispatcher', onSelect: () => onNavigateTab('grabbox') },
     { id: 'nav-progress', category: 'Navigation', title: 'View Progress', hint: 'Roadmap & Ledger', onSelect: () => onNavigateTab('progress') },
-    { id: 'nav-diagnostics', category: 'Navigation', title: 'Developer Terminal', hint: 'Dashboard & Moderation', onSelect: () => onNavigateTab('diagnostics') },
+    { id: 'nav-diagnostics', category: 'Navigation', title: 'Dashboard', hint: 'Moderation & Diagnostics', onSelect: () => onNavigateTab('diagnostics') },
     { id: 'nav-settings', category: 'Navigation', title: 'Settings', hint: 'Preferences', onSelect: () => onNavigateTab('settings') },
     
     // Actions

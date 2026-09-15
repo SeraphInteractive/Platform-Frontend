@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 
 export interface TrajectoryPoint {
   x: number;
@@ -12,6 +12,7 @@ export interface TrajectorySeries {
   strokeWidth?: number;
   dashArray?: string;
   points: TrajectoryPoint[];
+  fillGradient?: boolean;
   annotations?: {
     x: number;
     y: number;
@@ -55,6 +56,52 @@ interface TrajectoryCoordinateGraphProps {
   showHelpGuide?: boolean;
 }
 
+// Generate smooth cubic bezier path string from points
+function generateSmoothPath(
+  points: TrajectoryPoint[],
+  toSvgX: (x: number) => number,
+  toSvgY: (y: number) => number
+): string {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M ${toSvgX(points[0].x).toFixed(1)} ${toSvgY(points[0].y).toFixed(1)}`;
+  if (points.length === 2) {
+    return `M ${toSvgX(points[0].x).toFixed(1)} ${toSvgY(points[0].y).toFixed(1)} L ${toSvgX(points[1].x).toFixed(1)} ${toSvgY(points[1].y).toFixed(1)}`;
+  }
+
+  const svgPts = points.map((p) => ({ x: toSvgX(p.x), y: toSvgY(p.y) }));
+  let path = `M ${svgPts[0].x.toFixed(1)} ${svgPts[0].y.toFixed(1)}`;
+
+  for (let i = 0; i < svgPts.length - 1; i++) {
+    const p0 = svgPts[Math.max(0, i - 1)];
+    const p1 = svgPts[i];
+    const p2 = svgPts[i + 1];
+    const p3 = svgPts[Math.min(svgPts.length - 1, i + 2)];
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+
+  return path;
+}
+
+// Generate closed area path under a curve for gradient fills
+function generateAreaPath(
+  points: TrajectoryPoint[],
+  toSvgX: (x: number) => number,
+  toSvgY: (y: number) => number,
+  baselineY: number
+): string {
+  if (points.length < 2) return '';
+  const curve = generateSmoothPath(points, toSvgX, toSvgY);
+  const first = points[0];
+  const last = points[points.length - 1];
+  return `${curve} L ${toSvgX(last.x).toFixed(1)} ${baselineY.toFixed(1)} L ${toSvgX(first.x).toFixed(1)} ${baselineY.toFixed(1)} Z`;
+}
+
 export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps> = ({
   title,
   xLabel,
@@ -67,7 +114,7 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
   yStep = 20,
   series,
   cohortBand,
-  height = 380,
+  height = 360,
   xUnit = '',
   yUnit = '',
   timeSpans,
@@ -78,14 +125,14 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
   const [hoveredSeriesId, setHoveredSeriesId] = useState<string | null>(null);
   const [hoveredXVal, setHoveredXVal] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const graphId = useId().replace(/:/g, '_');
 
-  // Widen viewBox to 880 to allow comfortable breathing room and wide aspect ratio
-  const svgWidth = 880;
+  const svgWidth = 860;
   const svgHeight = height;
-  const padLeft = 110; // Generous margin for rotated Y label + monospace ticks
-  const padRight = 36;
-  const padTop = title ? 40 : 28;
-  const padBottom = 56;
+  const padLeft = 85;
+  const padRight = 32;
+  const padTop = title ? 36 : 24;
+  const padBottom = 50;
 
   const plotW = svgWidth - padLeft - padRight;
   const plotH = svgHeight - padTop - padBottom;
@@ -95,6 +142,7 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
 
   const toSvgX = (x: number) => padLeft + ((x - xMin) / safeXSpan) * plotW;
   const toSvgY = (y: number) => padTop + plotH - ((y - yMin) / safeYSpan) * plotH;
+  const baselineY = padTop + plotH;
 
   // Major ticks calculation
   const xTicks: number[] = [];
@@ -115,7 +163,6 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
     yTicks.push(yMax);
   }
 
-  // Handle interactive SVG hover crosshair
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!svgRef.current) return;
     const rect = svgRef.current.getBoundingClientRect();
@@ -135,7 +182,6 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
     setHoveredXVal(null);
   };
 
-  // Find series values at current hovered X
   const tooltipValues = hoveredXVal !== null
     ? series.map((s) => {
         const exact = s.points.find((p) => Math.round(p.x) === hoveredXVal);
@@ -152,7 +198,6 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
       })
     : [];
 
-  // Generate Cohort Band SVG Polygon if provided
   let cohortBandPath = '';
   if (cohortBand && cohortBand.upper.length > 0 && cohortBand.lower.length > 0) {
     const upperStr = cohortBand.upper
@@ -166,12 +211,12 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
   }
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Top Controls: Title, Time Span Filter, Unit Tag */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Header bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div>
           {title && (
-            <div style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>
+            <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>
               {title}
             </div>
           )}
@@ -179,21 +224,30 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {timeSpans && timeSpans.length > 0 && onTimeSpanChange && (
-            <div style={{ display: 'flex', gap: 4, background: 'var(--bg-card)', padding: '3px 4px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
+            <div
+              style={{
+                display: 'flex',
+                gap: 2,
+                background: 'var(--bg-card)',
+                padding: '2px',
+                borderRadius: '6px',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
               {timeSpans.map((span) => (
                 <button
                   key={span.id}
                   onClick={() => onTimeSpanChange(span.id)}
                   style={{
-                    background: activeTimeSpan === span.id ? 'var(--accent-blue)' : 'none',
+                    background: activeTimeSpan === span.id ? 'var(--accent-blue)' : 'transparent',
                     color: activeTimeSpan === span.id ? '#ffffff' : 'var(--text-muted)',
                     border: 'none',
                     borderRadius: '4px',
-                    padding: '3px 8px',
+                    padding: '3px 9px',
                     fontSize: '11px',
                     fontWeight: activeTimeSpan === span.id ? 700 : 500,
                     cursor: 'pointer',
-                    transition: 'background 0.15s ease, color 0.15s ease',
+                    transition: 'all 0.15s ease',
                   }}
                 >
                   {span.label}
@@ -202,13 +256,23 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
             </div>
           )}
 
-          <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-card-muted)', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
-            Range: [{xMin} - {xMax}]{xUnit}
+          <span
+            className="mono"
+            style={{
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              background: 'var(--bg-card)',
+              padding: '3px 8px',
+              borderRadius: '5px',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
+            Range: [{xMin} – {xMax}]{xUnit}
           </span>
         </div>
       </div>
 
-      {/* SVG Cartesian Plot */}
+      {/* SVG Canvas Plot */}
       <div style={{ width: '100%', position: 'relative', overflowX: 'auto' }}>
         <svg
           ref={svgRef}
@@ -218,39 +282,110 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
           style={{
             width: '100%',
             height: 'auto',
-            minWidth: 540,
+            minWidth: 500,
             display: 'block',
             background: 'var(--bg-card-muted)',
-            borderRadius: 'var(--radius-sm)',
+            borderRadius: 'var(--radius-md)',
             border: '1px solid var(--border-subtle)',
             cursor: 'crosshair',
           }}
         >
-          {/* Subtle Grid Lines */}
+          <defs>
+            {/* Gradients for Series Area Fills */}
+            {series.map((s) => (
+              <linearGradient
+                key={`grad_${s.id}_${graphId}`}
+                id={`grad_${s.id}_${graphId}`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop offset="0%" stopColor={s.color} stopOpacity="0.22" />
+                <stop offset="85%" stopColor={s.color} stopOpacity="0.02" />
+                <stop offset="100%" stopColor={s.color} stopOpacity="0.0" />
+              </linearGradient>
+            ))}
+            <filter id={`glow_${graphId}`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* Background Plot Area */}
+          <rect
+            x={padLeft}
+            y={padTop}
+            width={plotW}
+            height={plotH}
+            fill="var(--bg-card)"
+            opacity="0.5"
+            rx="4"
+          />
+
+          {/* Grid Lines */}
           {xTicks.map((x) => (
             <line
-              key={`maj-x-${x}`}
+              key={`grid-x-${x}`}
               x1={toSvgX(x)}
               y1={padTop}
               x2={toSvgX(x)}
               y2={padTop + plotH}
               stroke="var(--border-subtle)"
-              strokeWidth="0.8"
+              strokeWidth="0.75"
+              strokeDasharray="3 3"
             />
           ))}
           {yTicks.map((y) => (
             <line
-              key={`maj-y-${y}`}
+              key={`grid-y-${y}`}
               x1={padLeft}
               y1={toSvgY(y)}
               x2={padLeft + plotW}
               y2={toSvgY(y)}
               stroke="var(--border-subtle)"
-              strokeWidth="0.8"
+              strokeWidth="0.75"
+              strokeDasharray="3 3"
             />
           ))}
 
-          {/* Coordinate Axes */}
+          {/* Shaded Cohort Band */}
+          {cohortBandPath && (
+            <g>
+              <path
+                d={cohortBandPath}
+                fill={cohortBand?.color || 'rgba(148, 163, 184, 0.12)'}
+                stroke="none"
+              />
+              {cohortBand && cohortBand.upper.length > 0 && (
+                <path
+                  d={generateSmoothPath(cohortBand.upper, toSvgX, toSvgY)}
+                  fill="none"
+                  stroke="rgba(148, 163, 184, 0.35)"
+                  strokeWidth="1"
+                  strokeDasharray="3 3"
+                />
+              )}
+            </g>
+          )}
+
+          {/* Series Gradient Area Fills (Rendered Behind Lines) */}
+          {series.map((s) => {
+            if (s.points.length < 2 || s.dashArray) return null;
+            const areaPath = generateAreaPath(s.points, toSvgX, toSvgY, baselineY);
+            const isHovered = hoveredSeriesId === s.id;
+            return (
+              <path
+                key={`area_${s.id}`}
+                d={areaPath}
+                fill={`url(#grad_${s.id}_${graphId})`}
+                opacity={hoveredSeriesId && !isHovered ? 0.15 : 1}
+                style={{ transition: 'opacity 0.2s ease' }}
+              />
+            );
+          })}
+
+          {/* Axes Base Lines */}
           <line
             x1={padLeft}
             y1={padTop}
@@ -268,31 +403,11 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
             strokeWidth="1.2"
           />
 
-          {/* Shaded Cohort Band */}
-          {cohortBandPath && (
-            <g>
-              <path
-                d={cohortBandPath}
-                fill={cohortBand?.color || 'rgba(148, 163, 184, 0.12)'}
-                stroke="none"
-              />
-              {cohortBand && cohortBand.upper.length > 0 && (
-                <path
-                  d={cohortBand.upper.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${toSvgX(p.x).toFixed(1)} ${toSvgY(p.y).toFixed(1)}`).join(' ')}
-                  fill="none"
-                  stroke="rgba(148, 163, 184, 0.3)"
-                  strokeWidth="1"
-                  strokeDasharray="2,2"
-                />
-              )}
-            </g>
-          )}
-
           {/* Y Axis Numeric Ticks */}
           {yTicks.map((y) => (
             <g key={`lbl-y-${y}`}>
               <line
-                x1={padLeft - 4}
+                x1={padLeft - 5}
                 y1={toSvgY(y)}
                 x2={padLeft}
                 y2={toSvgY(y)}
@@ -300,10 +415,10 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
                 strokeWidth="1"
               />
               <text
-                x={padLeft - 10}
+                x={padLeft - 9}
                 y={toSvgY(y) + 3.5}
                 textAnchor="end"
-                fontSize="11"
+                fontSize="10"
                 fill="var(--text-muted)"
                 fontFamily="var(--font-mono)"
               >
@@ -319,7 +434,7 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
                 x1={toSvgX(x)}
                 y1={padTop + plotH}
                 x2={toSvgX(x)}
-                y2={padTop + plotH + 4}
+                y2={padTop + plotH + 5}
                 stroke="var(--text-muted)"
                 strokeWidth="1"
               />
@@ -327,7 +442,7 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
                 x={toSvgX(x)}
                 y={padTop + plotH + 16}
                 textAnchor="middle"
-                fontSize="11"
+                fontSize="10"
                 fill="var(--text-muted)"
                 fontFamily="var(--font-mono)"
               >
@@ -336,14 +451,15 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
             </g>
           ))}
 
-          {/* Rotated Y Axis Label placed safely on left */}
+          {/* Rotated Y Axis Label */}
           <text
             x={-(padTop + plotH / 2)}
-            y={22}
+            y={18}
             transform="rotate(-90)"
             textAnchor="middle"
-            fontSize="11"
+            fontSize="10.5"
             fontWeight="700"
+            letterSpacing="0.02em"
             fill="var(--text-muted)"
           >
             {yLabel}
@@ -352,25 +468,23 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
           {/* X Axis Label */}
           <text
             x={padLeft + plotW / 2}
-            y={padTop + plotH + 38}
+            y={padTop + plotH + 34}
             textAnchor="middle"
-            fontSize="11"
+            fontSize="10.5"
             fontWeight="700"
+            letterSpacing="0.02em"
             fill="var(--text-muted)"
           >
             {xLabel}
           </text>
 
-          {/* Render Trajectory Curves */}
+          {/* Render Trajectory Lines & Smooth Curves */}
           {series.map((s) => {
             if (s.points.length === 0) return null;
 
             const isHovered = hoveredSeriesId === s.id;
-            const pathData = s.points
-              .map((pt, idx) => `${idx === 0 ? 'M' : 'L'} ${toSvgX(pt.x).toFixed(1)} ${toSvgY(pt.y).toFixed(1)}`)
-              .join(' ');
-
-            const showDots = s.points.length <= 40;
+            const pathData = generateSmoothPath(s.points, toSvgX, toSvgY);
+            const showDots = s.points.length <= 35;
 
             return (
               <g
@@ -384,27 +498,31 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
                   d={pathData}
                   fill="none"
                   stroke={s.color}
-                  strokeWidth={isHovered ? (s.strokeWidth || 2) + 1.5 : (s.strokeWidth || 2)}
+                  strokeWidth={isHovered ? (s.strokeWidth || 2.2) + 1.5 : (s.strokeWidth || 2.2)}
                   strokeDasharray={s.dashArray || 'none'}
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  opacity={hoveredSeriesId && !isHovered ? 0.25 : 1}
+                  opacity={hoveredSeriesId && !isHovered ? 0.2 : 1}
+                  filter={isHovered ? `url(#glow_${graphId})` : undefined}
                   style={{ transition: 'stroke-width 0.15s ease, opacity 0.15s ease' }}
                 />
 
-                {/* Keyframe Dots */}
+                {/* Keyframe Nodes */}
                 {showDots && s.points.map((pt, pIdx) => (
                   <circle
                     key={pIdx}
                     cx={toSvgX(pt.x)}
                     cy={toSvgY(pt.y)}
-                    r={isHovered ? 3.5 : 2.5}
+                    r={isHovered ? 4 : 2.5}
                     fill={s.color}
-                    opacity={hoveredSeriesId && !isHovered ? 0.25 : 1}
+                    stroke="var(--bg-card)"
+                    strokeWidth="1.5"
+                    opacity={hoveredSeriesId && !isHovered ? 0.2 : 1}
+                    style={{ transition: 'r 0.15s ease' }}
                   />
                 ))}
 
-                {/* Minimalist Inline Curve Tags */}
+                {/* Inline Trajectory Badges */}
                 {s.annotations?.map((ann, aIdx) => {
                   const rawX = toSvgX(ann.x);
                   const rawY = toSvgY(ann.y);
@@ -421,7 +539,7 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
                       x={safeX}
                       y={safeY}
                       textAnchor={ann.align || 'middle'}
-                      fontSize="11"
+                      fontSize="10.5"
                       fontWeight="700"
                       fill={ann.color || s.color}
                       fontFamily="var(--font-mono)"
@@ -438,7 +556,7 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
             );
           })}
 
-          {/* Interactive Hover Crosshair */}
+          {/* Interactive Laser Crosshair on Hover */}
           {hoveredXVal !== null && (
             <g style={{ pointerEvents: 'none' }}>
               <line
@@ -446,17 +564,28 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
                 y1={padTop}
                 x2={toSvgX(hoveredXVal)}
                 y2={padTop + plotH}
-                stroke="var(--text-main)"
-                strokeWidth="1"
-                strokeDasharray="2,2"
-                opacity="0.6"
+                stroke="var(--accent-blue)"
+                strokeWidth="1.2"
+                strokeDasharray="2 2"
+                opacity="0.8"
               />
-              <circle
-                cx={toSvgX(hoveredXVal)}
-                cy={padTop + plotH}
-                r="3"
-                fill="var(--text-main)"
-              />
+              {/* Highlight circle on each series point at this X */}
+              {series.map((s) => {
+                const pt = s.points.find((p) => Math.round(p.x) === hoveredXVal);
+                if (!pt) return null;
+                return (
+                  <circle
+                    key={`pin_${s.id}`}
+                    cx={toSvgX(pt.x)}
+                    cy={toSvgY(pt.y)}
+                    r="4.5"
+                    fill={s.color}
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                    filter={`url(#glow_${graphId})`}
+                  />
+                );
+              })}
             </g>
           )}
         </svg>
@@ -466,34 +595,41 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
           <div
             style={{
               position: 'absolute',
-              top: 12,
-              left: Math.min(Math.max(toSvgX(hoveredXVal) - 60, padLeft), padLeft + plotW - 140),
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-strong)',
-              borderRadius: '6px',
-              padding: '6px 10px',
-              boxShadow: 'var(--shadow-card)',
+              top: 14,
+              left: Math.min(Math.max(toSvgX(hoveredXVal) - 70, padLeft + 6), padLeft + plotW - 160),
+              background: 'rgba(15, 23, 42, 0.92)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '7px',
+              padding: '7px 11px',
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
               pointerEvents: 'none',
               zIndex: 10,
               fontSize: '11px',
-              lineHeight: 1.4,
+              lineHeight: 1.45,
+              color: '#f8fafc',
             }}
           >
-            <div style={{ fontWeight: 700, color: 'var(--text-main)', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 2, marginBottom: 4 }}>
-              Step {hoveredXVal} {xUnit}
+            <div style={{ fontWeight: 800, color: '#93c5fd', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 3, marginBottom: 5 }}>
+              Ballot #{hoveredXVal} {xUnit}
             </div>
             {tooltipValues.map((v) => (
-              <div key={v.seriesId} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, color: v.color }}>
-                <span>{v.name}:</span>
-                <span className="mono" style={{ fontWeight: 700 }}>{v.y}{yUnit}</span>
+              <div key={v.seriesId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, marginTop: 2 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#e2e8f0' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: v.color }} />
+                  {v.name}:
+                </span>
+                <span className="mono" style={{ fontWeight: 800, color: v.color }}>
+                  {v.y}{yUnit}
+                </span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Trajectory Legend Cards with Hover Focus */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
+      {/* Trajectory Legend Chips with Hover Focus */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
         {series.map((s) => {
           const isSelected = hoveredSeriesId === s.id;
           return (
@@ -504,18 +640,19 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
               style={{
                 background: isSelected ? 'var(--bg-card-hover)' : 'var(--bg-card)',
                 border: isSelected ? `1px solid ${s.color}` : '1px solid var(--border-subtle)',
-                borderRadius: '6px',
-                padding: '8px 12px',
+                borderRadius: '7px',
+                padding: '9px 13px',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
+                boxShadow: isSelected ? `0 0 12px ${s.color}22` : 'none',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                 <span
                   style={{
                     display: 'inline-block',
-                    width: 10,
-                    height: 10,
+                    width: 8,
+                    height: 8,
                     borderRadius: '50%',
                     background: s.color,
                   }}
@@ -532,21 +669,21 @@ export const TrajectoryCoordinateGraph: React.FC<TrajectoryCoordinateGraphProps>
         })}
       </div>
 
-      {/* Mathematical Guide Footer */}
+      {/* Guide Footer */}
       {showHelpGuide && (
         <div
           style={{
             background: 'var(--bg-card-muted)',
             border: '1px solid var(--border-subtle)',
             borderRadius: '6px',
-            padding: '10px 14px',
+            padding: '9px 13px',
             fontSize: '11px',
             color: 'var(--text-muted)',
-            lineHeight: 1.5,
+            lineHeight: 1.45,
           }}
         >
-          <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>Graph Guide: </span>
-          The horizontal axis tracks cumulative ballot volume (N), while the vertical axis tracks points. The green line represents verified points, which must adhere to the 6N invariant line (y = 6x).
+          <strong style={{ color: 'var(--text-main)' }}>Telemetry Guide: </strong>
+          The horizontal axis tracks cumulative ballot count (N). The green trajectory represents verified points awarded, matching the strict 6N conservation invariant (y = 6x).
         </div>
       )}
     </div>
