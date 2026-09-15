@@ -8,6 +8,7 @@ import {
   useLiveBallots,
   useUpdateEntryStatus,
   useDeleteEntry,
+  useDeleteRound,
   VotingEntry,
 } from '../../hooks/useVotingApi.ts';
 import { useAuth, isStaff } from '../../context/AuthContext.tsx';
@@ -21,7 +22,7 @@ import { MomentsVarianceChart } from './MomentsVarianceChart.tsx';
 import { RaidTelemetryChart } from './RaidTelemetryChart.tsx';
 import { SupervisorModerationChart } from './SupervisorModerationChart.tsx';
 import { NetworkTelemetryChart } from './NetworkTelemetryChart.tsx';
-import { usePipelineProgress } from '../../hooks/usePipelineProgress.ts';
+import { RolesManagementView } from './RolesManagementView.tsx';
 import { NavTabId } from '../../components/Navbar.tsx';
 
 interface DevWorkbenchProps {
@@ -29,7 +30,7 @@ interface DevWorkbenchProps {
   onOpenCreateRound?: () => void;
   onNavigateTab?: (tab: NavTabId) => void;
   onSelectEntryForVote?: (entryId: string) => void;
-  defaultTab?: 'moderation' | 'invariants' | 'telemetry' | 'network' | 'pipeline';
+  defaultTab?: 'moderation' | 'invariants' | 'telemetry' | 'network' | 'roles';
 }
 
 export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
@@ -38,23 +39,13 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
   defaultTab = 'moderation',
 }) => {
   const { user } = useAuth();
-  const [activeConsoleTab, setActiveConsoleTab] = useState<'moderation' | 'invariants' | 'telemetry' | 'network' | 'pipeline'>(defaultTab);
-  const pipeline = usePipelineProgress();
-
-  const [tempStatusNote, setTempStatusNote] = useState<string>(pipeline.statusNote);
-  const [tempPercentage, setTempPercentage] = useState<number>(pipeline.percentage);
-  const [pipelineSavedNotice, setPipelineSavedNotice] = useState<string | null>(null);
-
-  useEffect(() => {
-    setTempStatusNote(pipeline.statusNote);
-    setTempPercentage(pipeline.percentage);
-  }, [pipeline.statusNote, pipeline.percentage]);
+  const [activeConsoleTab, setActiveConsoleTab] = useState<'moderation' | 'invariants' | 'telemetry' | 'network' | 'roles'>(defaultTab);
 
   const { data: rounds = [] } = useVotingRounds();
   const { activeRound } = useActiveRound();
   const [selectedRoundId, setSelectedRoundId] = useState<string>('');
 
-  const currentRoundId = selectedRoundId || activeRound?.id || 'round-01';
+  const currentRoundId = selectedRoundId || activeRound?.id || (rounds[0]?.id ?? '');
 
   const { data: entries = [] } = useRoundEntries(currentRoundId);
   const { data: leaderboardData } = useLiveLeaderboard(currentRoundId, entries);
@@ -83,6 +74,29 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
   // Mutations
   const updateStatusMutation = useUpdateEntryStatus(currentRoundId);
   const deleteEntryMutation = useDeleteEntry(currentRoundId);
+  const deleteRoundMutation = useDeleteRound();
+
+  const handleDeleteRound = async (roundId: string) => {
+    const roundToDelete = rounds.find((r) => r.id === roundId);
+    const roundTitle = roundToDelete?.title || roundId;
+    if (!window.confirm(`Are you sure you want to delete "${roundTitle}" and all its proposals?`)) {
+      return;
+    }
+    try {
+      await deleteRoundMutation.mutateAsync(roundId);
+      setModerationFeedback(`Round "${roundTitle}" successfully deleted.`);
+      setTimeout(() => setModerationFeedback(null), 4000);
+      const remaining = rounds.filter((r) => r.id !== roundId);
+      if (remaining.length > 0) {
+        setSelectedRoundId(remaining[0]!.id);
+      } else {
+        setSelectedRoundId('');
+      }
+    } catch {
+      setModerationFeedback('Failed to delete round.');
+      setTimeout(() => setModerationFeedback(null), 4000);
+    }
+  };
 
   // Selected entry pointers for statistical inspection
   const [selectedMomentsEntry, setSelectedMomentsEntry] = useState<string>(entries[0]?.id || '');
@@ -117,7 +131,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
     rawScore: 0,
   };
   const observedTelemetry = telemetryList.find((t) => t.entryId === selectedRaidEntry);
-  const observedVelocityZ = observedTelemetry?.velocityZScore ?? 0.5;
+  const observedVelocityZ = observedTelemetry?.velocityZScore ?? 0.0;
   const targetRaidTelemetry = analyze_raid_risk(targetRaidBreakdown, observedVelocityZ);
 
   const handleUpdateStatus = async (entryId: string, status: 'approved' | 'rejected' | 'flagged' | 'pending_review') => {
@@ -224,10 +238,10 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
             Network
           </button>
           <button
-            className={`btn btn-sm ${activeConsoleTab === 'pipeline' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveConsoleTab('pipeline')}
+            className={`btn btn-sm ${activeConsoleTab === 'roles' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveConsoleTab('roles')}
           >
-            Pipeline
+            Roles
           </button>
         </div>
 
@@ -241,8 +255,8 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
         <div className="card">
           <div className="card-header">
             <div>
-              <div className="card-title">Supervisor Queue</div>
-              <div className="card-desc">Review proposals, approval status, and manage voting rounds.</div>
+              <div className="card-title">Pitches</div>
+              <div className="card-desc" style={{ fontStyle: 'italic' }}>Review candidate proposals, audit status, and manage voting rounds.</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               {onOpenCreateRound && (
@@ -264,14 +278,14 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
             </div>
           )}
 
-          {/* Round Selector */}
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+          {/* Round Selector & Controls */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>Target Round:</span>
             <select
               value={currentRoundId}
               onChange={(e) => setSelectedRoundId(e.target.value)}
               className="select"
-              style={{ maxWidth: 300 }}
+              style={{ maxWidth: 280 }}
             >
               {rounds.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -279,6 +293,17 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                 </option>
               ))}
             </select>
+
+            {rounds.length > 0 && (
+              <button
+                className="btn btn-secondary btn-sm"
+                style={{ color: '#ef4444', fontSize: '11px', padding: '4px 10px' }}
+                onClick={() => handleDeleteRound(currentRoundId)}
+                title="Delete this round and its proposals"
+              >
+                Delete Round
+              </button>
+            )}
           </div>
 
           {/* Visual Moderation Category Distribution, Queue Health & AI Radar */}
@@ -535,9 +560,9 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
         <>
           <div className="card">
             <div className="card-header">
-              <div className="card-title">Conservation (6N)</div>
+              <div className="card-title">Conservation</div>
               <span className={`badge ${isConserved ? 'badge-success' : 'badge-danger'}`}>
-                {isConserved ? 'Conserved' : 'Point Leak'}
+                {isConserved ? 'Conserved' : 'Leak Detected'}
               </span>
             </div>
 
@@ -562,7 +587,6 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
               </div>
             </div>
 
-            {/* Visual 6N Conservation Live Trajectory and Tutorial Graph */}
             <ConservationChart
               totalBallots={totalBallots}
               expectedPoints={expectedPoints}
@@ -575,7 +599,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
           <div className="card">
             <div className="card-header">
-              <div className="card-title">Moments & Variance</div>
+              <div className="card-title">Moments</div>
               <select
                 className="select-field"
                 value={selectedMomentsEntry}
@@ -616,7 +640,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
       {activeConsoleTab === 'telemetry' && (
         <div className="card">
           <div className="card-header">
-            <div className="card-title">Raid Risk & Entropy</div>
+            <div className="card-title">Telemetry</div>
             <select
               className="select-field"
               value={selectedRaidEntry}
@@ -663,426 +687,9 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
         <NetworkTelemetryChart roundId={currentRoundId} />
       )}
 
-      {/* Sub-View 5: Pipeline Console Manager */}
-      {activeConsoleTab === 'pipeline' && (
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Pipeline</div>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                className="btn btn-secondary btn-sm"
-                style={{ color: '#ef4444' }}
-                onClick={() => {
-                  if (window.confirm('Reset studio pipeline to Phase 1 Initial (0%)?')) {
-                    pipeline.resetToZero();
-                    setPipelineSavedNotice('Pipeline reset to Phase 1 (0%).');
-                    setTimeout(() => setPipelineSavedNotice(null), 3000);
-                  }
-                }}
-              >
-                Reset Pipeline
-              </button>
-            </div>
-          </div>
-
-          {pipelineSavedNotice && (
-            <div
-              style={{
-                padding: '8px 12px',
-                background: 'rgba(16, 185, 129, 0.15)',
-                border: '1px solid #10b981',
-                borderRadius: 'var(--radius-sm)',
-                color: 'var(--text-main)',
-                fontSize: '12px',
-                fontWeight: 700,
-                marginBottom: 14,
-              }}
-            >
-              {pipelineSavedNotice}
-            </div>
-          )}
-
-          {/* Current State Summary Cards */}
-          <div className="landing-metrics-grid" style={{ marginBottom: 18 }}>
-            <div className="landing-metric-card">
-              <div className="landing-metric-label">Phase</div>
-              <div className="landing-metric-value mono" style={{ color: pipeline.currentBigStage.color }}>
-                {pipeline.currentBigStage.phaseNumber}: {pipeline.currentBigStage.shortName}
-              </div>
-            </div>
-            <div className="landing-metric-card">
-              <div className="landing-metric-label">Step</div>
-              <div className="landing-metric-value mono" style={{ fontSize: '15px' }}>
-                {pipeline.currentSubStage.shortName}
-              </div>
-            </div>
-            <div className="landing-metric-card">
-              <div className="landing-metric-label">Progress</div>
-              <div className="landing-metric-value mono text-green">
-                {pipeline.percentage}%
-              </div>
-            </div>
-            <div className="landing-metric-card">
-              <div className="landing-metric-label">Supervisor</div>
-              <div className="landing-metric-value mono" style={{ fontSize: '13px' }}>
-                {pipeline.currentSubStage.supervisor}
-              </div>
-            </div>
-          </div>
-
-          {/* 4-Phase Roadmap Selector */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 10 }}>
-              Phases
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                gap: 12,
-              }}
-            >
-              {pipeline.stages.map((stage, bIdx) => {
-                const isActive = bIdx === pipeline.currentBigStageIndex;
-                const isPast = bIdx < pipeline.currentBigStageIndex;
-
-                return (
-                  <div
-                    key={stage.id}
-                    onClick={() => pipeline.setStage(bIdx, 0)}
-                    className="white-card"
-                    style={{
-                      padding: '14px 16px',
-                      borderRadius: '12px',
-                      border: `2px solid ${isActive ? stage.color : 'var(--border-subtle)'}`,
-                      background: isActive ? stage.bgTint : 'var(--bg-card)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 8,
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 800,
-                          color: stage.color,
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        Phase {stage.phaseNumber}
-                      </span>
-                      <span
-                        className="badge"
-                        style={{
-                          fontSize: '10px',
-                          padding: '2px 8px',
-                          background: isActive ? stage.color : isPast ? '#10b981' : 'var(--bg-card-muted)',
-                          color: isActive || isPast ? '#ffffff' : 'var(--text-muted)',
-                        }}
-                      >
-                        {isActive ? 'Active' : isPast ? 'Done' : 'Pending'}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main)' }}>
-                      {stage.name}
-                    </div>
-
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                      {stage.supervisors.join(', ')}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 6, borderTop: '1px solid var(--border-subtle)' }}>
-                      <span className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                        {stage.subStages.length} Sub-Stages
-                      </span>
-                      <span className="mono" style={{ fontSize: '10px', color: 'var(--text-main)', fontWeight: 700 }}>
-                        {stage.deliverables[0]?.name}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Active Phase Sub-Stages Sequential Selector */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 10 }}>
-              Steps
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {pipeline.currentBigStage.subStages.map((sub, sIdx) => {
-                const isCurrentSub = sIdx === pipeline.currentSubStageIndex;
-                const isPastSub = sIdx < pipeline.currentSubStageIndex;
-
-                return (
-                  <div
-                    key={sub.id}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: 12,
-                      padding: '12px 16px',
-                      borderRadius: '10px',
-                      background: isCurrentSub ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-card-muted)',
-                      border: isCurrentSub ? '1px solid #10b981' : '1px solid var(--border-subtle)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 300px' }}>
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: isCurrentSub ? '#10b981' : isPastSub ? '#059669' : 'var(--border-subtle)',
-                          color: isCurrentSub || isPastSub ? '#ffffff' : 'var(--text-muted)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '12px',
-                          fontWeight: 800,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {sIdx + 1}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: 800, color: isCurrentSub ? '#10b981' : 'var(--text-main)' }}>
-                          {sub.name}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
-                          {sub.department} | Supervisor: {sub.supervisor}
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-light)', marginTop: 2 }}>
-                          {sub.description}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {sub.deliverable && (
-                        <span className="badge badge-engine" style={{ fontSize: '10px' }}>
-                          {sub.deliverable}
-                        </span>
-                      )}
-                      {isCurrentSub ? (
-                        <span className="badge badge-success" style={{ fontSize: '11px', padding: '4px 10px' }}>
-                          Active Step
-                        </span>
-                      ) : (
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          style={{ fontSize: '11px', padding: '4px 10px' }}
-                          onClick={() => pipeline.setStage(pipeline.currentBigStageIndex, sIdx)}
-                        >
-                          Set Active
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Progress Percentage & Status Note Controls */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 20 }}>
-            {/* Percentage Controls */}
-            <div className="white-card" style={{ padding: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 12 }}>
-                Progress
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={tempPercentage}
-                    onChange={(e) => setTempPercentage(Number(e.target.value))}
-                    style={{ flex: 1 }}
-                  />
-                  <span className="mono" style={{ fontSize: '14px', fontWeight: 800, width: 45, textAlign: 'right' }}>
-                    {tempPercentage}%
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    style={{ flex: 1, fontSize: '11px' }}
-                    onClick={() => {
-                      pipeline.setPercentage(tempPercentage);
-                      setPipelineSavedNotice(`Set custom progress to ${tempPercentage}%.`);
-                      setTimeout(() => setPipelineSavedNotice(null), 3000);
-                    }}
-                  >
-                    Apply Percentage
-                  </button>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    style={{ fontSize: '11px' }}
-                    onClick={() => {
-                      pipeline.setPercentage(null);
-                      setPipelineSavedNotice('Reverted to auto-calculated percentage.');
-                      setTimeout(() => setPipelineSavedNotice(null), 3000);
-                    }}
-                  >
-                    Auto Calculate
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Status Note Controls */}
-            <div className="white-card" style={{ padding: '16px' }}>
-              <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 12 }}>
-                Note
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <textarea
-                  className="input-field"
-                  rows={2}
-                  style={{ fontSize: '12px', resize: 'vertical' }}
-                  value={tempStatusNote}
-                  onChange={(e) => setTempStatusNote(e.target.value)}
-                  placeholder="Enter supervisor production note..."
-                />
-                <button
-                  className="btn btn-primary btn-sm"
-                  style={{ alignSelf: 'flex-start', fontSize: '11px' }}
-                  onClick={() => {
-                    pipeline.setStatusNote(tempStatusNote);
-                    setPipelineSavedNotice('Updated supervisor status note.');
-                    setTimeout(() => setPipelineSavedNotice(null), 3000);
-                  }}
-                >
-                  Save Note
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Deliverables Roster Table */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 10 }}>
-              Deliverables
-            </div>
-            <div className="table-responsive">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Phase</th>
-                    <th>Deliverable</th>
-                    <th>Type</th>
-                    <th>Primary Recipient</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pipeline.stages.flatMap((st, bIdx) =>
-                    st.deliverables.map((del, dIdx) => {
-                      const isPhasePast = bIdx < pipeline.currentBigStageIndex;
-                      const isPhaseCurrent = bIdx === pipeline.currentBigStageIndex;
-                      const status = isPhasePast ? 'completed' : isPhaseCurrent ? 'in_progress' : 'pending';
-
-                      return (
-                        <tr key={`${st.id}-${dIdx}`}>
-                          <td className="mono" style={{ fontWeight: 700, color: st.color }}>
-                            Phase {st.phaseNumber}: {st.shortName}
-                          </td>
-                          <td style={{ fontWeight: 700 }}>
-                            {del.name}
-                          </td>
-                          <td>
-                            <span className="badge badge-light" style={{ fontSize: '10px', textTransform: 'uppercase' }}>
-                              {del.type}
-                            </span>
-                          </td>
-                          <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                            {bIdx === 0
-                              ? 'Pre-Vis / Story'
-                              : bIdx === 1
-                              ? 'Art & Animation'
-                              : bIdx === 2
-                              ? 'Post-Production / Sound'
-                              : 'Final Release'}
-                          </td>
-                          <td>
-                            <span
-                              className={`badge ${
-                                status === 'completed'
-                                  ? 'badge-success'
-                                  : status === 'in_progress'
-                                  ? 'badge-engine'
-                                  : 'badge-light'
-                              }`}
-                              style={{ fontSize: '10px' }}
-                            >
-                              {status === 'completed'
-                                ? 'Completed'
-                                : status === 'in_progress'
-                                ? 'In Progress'
-                                : 'Pending'}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Roadmap Department Hierarchy */}
-          <div>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 10 }}>
-              Supervisors
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: 12,
-              }}
-            >
-              {[
-                { title: 'Story Supervisor', color: '#94a3b8', roles: 'Writers, Script Editors, Community Feedback' },
-                { title: 'Art Supervisor', color: '#60a5fa', roles: 'Concept Artists, Blueprints, Builders, 3D Modelers, Shading' },
-                { title: 'Animation Supervisor', color: '#2dd4bf', roles: '2D Animators, Layout, Character Animators, FX, Lighters' },
-                { title: 'Post Supervisor', color: '#c084fc', roles: 'Editorial, VFX Artists, Colorist, Final Master Assembly' },
-                { title: 'Audio Supervisor', color: '#fb923c', roles: 'Voice Actor Director, Voice Actors, Sound Designers, Music Composers' },
-              ].map((sup, idx) => (
-                <div
-                  key={idx}
-                  className="white-card"
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    borderLeft: `4px solid ${sup.color}`,
-                  }}
-                >
-                  <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
-                    {sup.title}
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                    {sup.roles}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Sub-View 5: Roles & Staff Management */}
+      {activeConsoleTab === 'roles' && (
+        <RolesManagementView />
       )}
 
       {/* Pitch Inspection Modal with AI Audit Breakdown */}

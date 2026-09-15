@@ -52,8 +52,8 @@ const MainDashboardLayout: React.FC = () => {
   const { activeRound } = useActiveRound();
   const [selectedRoundId, setSelectedRoundId] = useState<string>('');
 
-  const currentRoundId = selectedRoundId || activeRound?.id || 'round-01';
-  const currentRound = rounds.find((r: VotingRound) => r.id === currentRoundId) || activeRound;
+  const currentRoundId = selectedRoundId || activeRound?.id || '';
+  const currentRound = rounds.find((r: VotingRound) => r.id === currentRoundId) || activeRound || undefined;
 
   const { data: entries = [] } = useRoundEntries(currentRoundId);
   const { data: myBallot } = useMyBallot(currentRoundId);

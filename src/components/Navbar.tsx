@@ -91,23 +91,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Documentation */}
-          <div className="right-nav-item-wrapper">
-            <button
-              className={`right-nav-icon-btn ${activeTab === 'docs' ? 'active' : ''}`}
-              onClick={() => handleNav('docs')}
-              aria-label="Documentation"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              </svg>
-            </button>
-            <div className="nav-hover-tooltip minecraft-tooltip-panel">
-              <div className="mc-tooltip-title" style={{ color: '#60a5fa' }}>Documentation</div>
-            </div>
-          </div>
-
           {/* GrabBox */}
           <div className="right-nav-item-wrapper">
             <button
@@ -143,21 +126,40 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Terminal (admin, moderator, or supervisor only) */}
+          {/* Documentation */}
+          <div className="right-nav-item-wrapper">
+            <button
+              className={`right-nav-icon-btn ${activeTab === 'docs' ? 'active' : ''}`}
+              onClick={() => handleNav('docs')}
+              aria-label="Documentation"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              </svg>
+            </button>
+            <div className="nav-hover-tooltip minecraft-tooltip-panel">
+              <div className="mc-tooltip-title" style={{ color: '#60a5fa' }}>Documentation</div>
+            </div>
+          </div>
+
+          {/* Dashboard (admin, moderator, or supervisor only) */}
           {isStaff(user?.role) && (
             <div className="right-nav-item-wrapper">
               <button
                 className={`right-nav-icon-btn ${activeTab === 'diagnostics' ? 'active' : ''}`}
                 onClick={() => handleNav('diagnostics')}
-                aria-label="Terminal"
+                aria-label="Dashboard"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="4 17 10 11 4 5" />
-                  <line x1="12" y1="19" x2="20" y2="19" />
+                  <rect x="3" y="3" width="7" height="9" rx="1" />
+                  <rect x="14" y="3" width="7" height="5" rx="1" />
+                  <rect x="14" y="12" width="7" height="9" rx="1" />
+                  <rect x="3" y="16" width="7" height="5" rx="1" />
                 </svg>
               </button>
               <div className="nav-hover-tooltip minecraft-tooltip-panel">
-                <div className="mc-tooltip-title" style={{ color: '#ff5555' }}>Terminal</div>
+                <div className="mc-tooltip-title" style={{ color: '#ff5555' }}>Dashboard</div>
               </div>
             </div>
           )}
@@ -287,12 +289,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
             <button
               className="nav-link-btn"
-              onClick={() => handleNav('docs')}
-            >
-              Docs
-            </button>
-            <button
-              className="nav-link-btn"
               onClick={() => handleNav('grabbox')}
             >
               GrabBox
@@ -303,13 +299,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Progress
             </button>
+            <button
+              className="nav-link-btn"
+              onClick={() => handleNav('docs')}
+            >
+              Docs
+            </button>
 
             {isStaff(user?.role) && (
               <button
                 className="nav-link-btn"
                 onClick={() => handleNav('diagnostics')}
               >
-                Terminal
+                Dashboard
               </button>
             )}
           </nav>

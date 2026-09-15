@@ -57,7 +57,7 @@ export const VotePage: React.FC<VotePageProps> = ({
   // Deterministic seeded Fisher-Yates shuffle per voter & round to eliminate candidate presentation primacy bias
   const randomizedEntries = React.useMemo(() => {
     if (!entries || entries.length <= 1) return entries;
-    const seed = `${voterId || 'community_voter'}-${activeRound?.id || 'round-01'}-pool-perm`;
+    const seed = `${voterId || 'community_voter'}-${activeRound?.id || 'round-seed'}-pool-perm`;
     let h = 2166136261 >>> 0;
     for (let i = 0; i < seed.length; i++) {
       h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
