@@ -62,6 +62,10 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!roundId) {
+      setError('No active round found in database. Please wait for an active round to be created.');
+      return;
+    }
     if (isBarred) {
       setError('Account barred from submitting scene proposals.');
       return;
@@ -191,7 +195,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
             marginBottom: 16,
             padding: '12px 16px',
             background: 'var(--bg-card-muted)',
-            border: '1px solid var(--border-subtle)',
+            borderRadius: '10px',
             fontSize: '12px',
             color: 'var(--text-muted)',
             lineHeight: 1.5,
@@ -283,7 +287,6 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
                   borderRadius: '12px',
                   overflow: 'hidden',
                   background: 'var(--bg-card-muted)',
-                  border: '1px solid var(--border-subtle)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -298,7 +301,6 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
             ) : (
               <div
                 style={{
-                  border: '2px dashed var(--border-strong)',
                   borderRadius: '12px',
                   padding: '20px',
                   textAlign: 'center',

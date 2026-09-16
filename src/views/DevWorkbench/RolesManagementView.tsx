@@ -133,6 +133,8 @@ export const RolesManagementView: React.FC = () => {
   const [newRoleColor, setNewRoleColor] = useState<string>('#3b82f6');
   const [newRoleDescription, setNewRoleDescription] = useState<string>('');
 
+  const [hoveredRoleId, setHoveredRoleId] = useState<string | null>(null);
+
   // Combined Roles List (System + Mutable Custom)
   const allRoles = useMemo(() => {
     return [...DEFAULT_SYSTEM_ROLES, ...customRoles];
@@ -288,13 +290,8 @@ export const RolesManagementView: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h1 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>
-                Roles & User Management
-              </h1>
-              <span className="badge badge-engine mono">{users.length} SIGNED-UP USERS</span>
-            </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: 4 }}>
-              Live PostgreSQL database users, mutable supervisor and department roles, and real-time Discord presence tracking.
+              <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-main)' }}>Roles</div>
+              <span className="badge badge-engine mono">{users.length} USERS</span>
             </div>
           </div>
 
@@ -319,14 +316,14 @@ export const RolesManagementView: React.FC = () => {
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              <span>+ Add Custom Role</span>
+              <span>Add Custom Role</span>
             </button>
           </div>
         </div>
       </div>
 
       {notice && (
-        <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 700 }}>
+        <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 700 }}>
           {notice}
         </div>
       )}
@@ -334,57 +331,91 @@ export const RolesManagementView: React.FC = () => {
       {/* 2. Mutable Role System Registry */}
       <div className="card" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)' }}>
-              Active Role Definitions ({allRoles.length})
-            </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Supervisor and custom roles available for assignment across the platform.
-            </div>
+          <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)' }}>
+            Definitions
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
-          {allRoles.map((role) => (
-            <div
-              key={role.id}
-              style={{
-                padding: '12px 14px',
-                background: 'var(--bg-card-muted)',
-                borderRadius: '8px',
-                border: '1px solid var(--border-subtle)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+          {allRoles.map((role) => {
+            const isHovered = hoveredRoleId === role.id;
+            return (
+              <div
+                key={role.id}
+                onMouseEnter={() => setHoveredRoleId(role.id)}
+                onMouseLeave={() => setHoveredRoleId(null)}
+                title={role.description}
+                style={{
+                  position: 'relative',
+                  padding: '10px 14px',
+                  background: isHovered ? 'var(--bg-card-hover)' : 'var(--bg-card-muted)',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: role.color }} />
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: role.color, flexShrink: 0 }} />
                   <span style={{ fontWeight: 800, fontSize: '13px', color: 'var(--text-main)' }}>
                     {role.name}
                   </span>
                 </div>
+
                 {!role.isBuiltIn ? (
                   <button
                     className="btn btn-secondary btn-sm"
                     style={{ padding: '2px 6px', fontSize: '10px', color: '#ef4444' }}
-                    onClick={() => handleDeleteCustomRole(role.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteCustomRole(role.id);
+                    }}
                     title="Delete custom role"
                   >
                     Delete
                   </button>
                 ) : (
-                  <span className="badge badge-light" style={{ fontSize: '9px', padding: '1px 5px' }}>
-                    {role.category}
+                  <span className="badge badge-light" style={{ fontSize: '9px', padding: '2px 6px' }}>
+                    {role.category.toUpperCase()}
                   </span>
                 )}
+
+                {/* Details Floating Tooltip on Hover */}
+                {isHovered && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 'calc(100% + 8px)',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: 'rgba(15, 23, 42, 0.95)',
+                      backdropFilter: 'blur(12px)',
+                      color: '#f8fafc',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+                      zIndex: 100,
+                      pointerEvents: 'none',
+                      width: 'max-content',
+                      maxWidth: '260px',
+                      fontSize: '11px',
+                      lineHeight: 1.45,
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, color: role.color, marginBottom: 2 }}>
+                      {role.name} ({role.category})
+                    </div>
+                    <div style={{ color: '#cbd5e1' }}>
+                      {role.description}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                {role.description}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -393,12 +424,9 @@ export const RolesManagementView: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)' }}>
-              Signed-Up Users ({filteredUsers.length})
+              Users
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Select any user to mutate their platform and department permissions live.
-            </div>
-          </div>
+                      </div>
 
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <input
@@ -435,11 +463,11 @@ export const RolesManagementView: React.FC = () => {
           <table className="table">
             <thead>
               <tr>
-                <th>User / Discord PFP</th>
+                <th>User</th>
                 <th>Discord ID</th>
-                <th>Discord Presence</th>
-                <th>Current Role</th>
-                <th style={{ textAlign: 'right', minWidth: 200 }}>Assign Role</th>
+                <th>Presence</th>
+                <th>Role</th>
+                <th style={{ textAlign: 'right', minWidth: 200 }}>Assign</th>
               </tr>
             </thead>
             <tbody>
@@ -474,7 +502,6 @@ export const RolesManagementView: React.FC = () => {
                                 height: 36,
                                 borderRadius: '50%',
                                 objectFit: 'cover',
-                                border: '1px solid var(--border-subtle)',
                               }}
                             />
                             {/* Live Discord Presence Indicator Dot */}
@@ -488,7 +515,6 @@ export const RolesManagementView: React.FC = () => {
                                 borderRadius: '50%',
                                 background: presence.color,
                                 boxShadow: presence.glow,
-                                border: '2px solid var(--bg-card)',
                               }}
                               title={`Discord Status: ${presence.label}`}
                             />
@@ -529,7 +555,6 @@ export const RolesManagementView: React.FC = () => {
                           style={{
                             background: `${allRoles.find((r) => r.id === u.role)?.color || '#3b82f6'}22`,
                             color: allRoles.find((r) => r.id === u.role)?.color || '#3b82f6',
-                            border: `1px solid ${allRoles.find((r) => r.id === u.role)?.color || '#3b82f6'}44`,
                             fontSize: '11px',
                             fontWeight: 700,
                           }}
@@ -673,6 +698,7 @@ export const RolesManagementView: React.FC = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

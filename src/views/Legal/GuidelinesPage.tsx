@@ -56,7 +56,7 @@ export const GuidelinesPage: React.FC<GuidelinesPageProps> = ({
             Overview
           </h2>
           <p>
-            The Community Film Project brings together writers, concept artists, builders, 3D animators, voice actors, and sound engineers to produce an animated feature. To ensure a productive and respectful environment, all participants must follow these guidelines.
+            Project Stairway brings together writers, concept artists, builders, 3D animators, voice actors, and sound engineers to produce an animated feature. To ensure a productive and respectful environment, all participants must follow these guidelines.
           </p>
         </section>
 

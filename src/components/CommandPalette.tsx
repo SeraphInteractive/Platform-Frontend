@@ -173,7 +173,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               fontSize: '11px',
               padding: '2px 6px',
               background: 'var(--bg-card)',
-              border: '1px solid var(--border-subtle)',
               borderRadius: '6px',
               color: 'var(--text-light)',
             }}
@@ -208,7 +207,6 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     borderRadius: '12px',
                     cursor: 'pointer',
                     background: isSelected ? 'var(--bg-card-hover)' : 'transparent',
-                    border: isSelected ? '1px solid var(--border-strong)' : '1px solid transparent',
                     transition: 'all 0.1s ease',
                   }}
                 >

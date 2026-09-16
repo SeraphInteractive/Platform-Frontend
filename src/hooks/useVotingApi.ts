@@ -14,8 +14,14 @@ if (typeof window !== 'undefined') {
     localStorage.removeItem('mcs_local_rounds_v3');
     localStorage.removeItem('mcs_local_ballots_v3');
     localStorage.removeItem('mcs_local_entries_v6');
+    localStorage.removeItem('mcs_organic_progress_updates_v1');
     Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('mcs_local_entries_') || key.startsWith('mcs_local_ballots_') || key.startsWith('mcs_local_rounds_')) {
+      if (
+        key.startsWith('mcs_local_entries_') ||
+        key.startsWith('mcs_local_ballots_') ||
+        key.startsWith('mcs_local_rounds_') ||
+        key.startsWith('mcs_organic_progress_updates_v1')
+      ) {
         localStorage.removeItem(key);
       }
     });

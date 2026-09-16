@@ -588,7 +588,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
             GrabBox
           </h2>
           <p>
-            The <strong>GrabBox</strong> engine facilitates decentralized shot allocation. 3D animation tasks are published to the public board with difficulty ratings and lease durations:
+            The <strong>GrabBox</strong> engine facilitates decentralized shot allocation and production milestone tracking. When a community voting round is finalized, the production team generates and publishes corresponding 3D scene tasks to the shots database, linking them to that round ID to release project files and advance production milestones:
           </p>
           <ul style={{ paddingLeft: 22, margin: '10px 0 14px 0' }}>
             <li><strong>Tier 1 (Easy):</strong> 24-hour lease window for simple background animations or prop setups.</li>
@@ -597,7 +597,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
             <li><strong>Tier 4 (Legendary):</strong> 120-hour lease window for complex climax scenes with dynamic camera shifts and simulations.</li>
           </ul>
           <p>
-            When an artist claims a task, the platform locks the shot to prevent duplicate effort. Deliverables are uploaded via presigned S3/R2 direct-to-storage URLs with SHA-256 integrity checksums. If the lease timer expires without a valid submission, the shot automatically returns to the open GrabBox pool.
+            When an artist claims a task, the platform locks the shot to prevent duplicate effort. Deliverables are uploaded via presigned S3/R2 direct-to-storage URLs with SHA-256 integrity checksums. If the lease timer expires without a valid submission, the shot automatically returns to the open GrabBox pool for other animators to claim.
           </p>
         </section>
 

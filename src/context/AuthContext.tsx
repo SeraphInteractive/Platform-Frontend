@@ -8,6 +8,23 @@ export function isStaff(role?: string): boolean {
   return role === 'admin' || role === 'moderator' || role === 'supervisor';
 }
 
+/**
+ * Detects whether the current client is running in a local development environment.
+ * The fake standin studio supervisor dummy account only activates under local test environments.
+ */
+export function isLocalDevEnvironment(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  const isDev = Boolean((import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV);
+  return (
+    isDev ||
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0' ||
+    host.endsWith('.local')
+  );
+}
+
 export interface DiscordGuildPermissions {
   isGuildOwner?: boolean;
   permissionBits?: string | number;
@@ -223,6 +240,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const rawUser = apiUser || sessionUser;
   const isBarred = warnings >= 3;
 
+  // Standin studio supervisor dummy account only activates under local dev environments
+  const defaultFallbackUser = isLocalDevEnvironment() ? DEV_DEFAULT_USER : null;
+
   const activeUser: UserProfile | null = isLoggedOut
     ? null
     : rawUser
@@ -232,7 +252,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         warnings,
         isBarred,
       }
-    : DEV_DEFAULT_USER;
+    : defaultFallbackUser;
 
   const addWarning = () => {
     setWarnings((prev) => {

@@ -95,6 +95,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     // 2. Font Size
     document.documentElement.style.fontSize = `${settings.fontSize}px`;
+    document.documentElement.style.setProperty('--app-font-size', `${settings.fontSize}px`);
     localStorage.setItem(STORAGE_KEYS.fontSize, settings.fontSize.toString());
 
     // 3. Compactness

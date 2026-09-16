@@ -56,7 +56,7 @@ export const PrivacyPage: React.FC<PrivacyPageProps> = ({
             Overview
           </h2>
           <p>
-            The Community Film Project operates as a decentralized, non-commercial collaborative media initiative. We are committed to protecting the privacy of all contributors, voters, animators, and community visitors. This Privacy Policy details the categories of data we collect, how that information is utilized to operate consensus voting rounds and asset pipelines, and your rights regarding data retention and deletion.
+            Project Stairway operates as a decentralized, non-commercial collaborative media initiative. We are committed to protecting the privacy of all contributors, voters, animators, and community visitors. This Privacy Policy details the categories of data we collect, how that information is utilized to operate consensus voting rounds and asset pipelines, and your rights regarding data retention and deletion.
           </p>
           <p>
             We do not sell, rent, monetize, or trade personal data to third-party commercial data brokers under any circumstances.

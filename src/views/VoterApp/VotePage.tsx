@@ -40,17 +40,7 @@ export const VotePage: React.FC<VotePageProps> = ({
 
   const [isDragOverPool, setIsDragOverPool] = useState(false);
 
-  const [hasDismissedTutorial, setHasDismissedTutorial] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('mcs_seen_vote_tutorial_v2') === 'true';
-  });
 
-  const handleDismissTutorial = () => {
-    setHasDismissedTutorial(true);
-    try {
-      localStorage.setItem('mcs_seen_vote_tutorial_v2', 'true');
-    } catch {}
-  };
 
   const rollerRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +112,6 @@ export const VotePage: React.FC<VotePageProps> = ({
   const handleDrop = (e: React.DragEvent, slotNum: 1 | 2 | 3) => {
     e.preventDefault();
     setDragOverSlot(null);
-    handleDismissTutorial();
     const entryId = e.dataTransfer.getData('text/plain') || draggedId;
     if (entryId) {
       onSelectRank(slotNum, entryId);
@@ -160,7 +149,6 @@ export const VotePage: React.FC<VotePageProps> = ({
   };
 
   const handleSlotClick = (slotNum: 1 | 2 | 3, entryId: string) => {
-    handleDismissTutorial();
     onSelectRank(slotNum, entryId);
   };
 
@@ -196,7 +184,6 @@ export const VotePage: React.FC<VotePageProps> = ({
             style={{
               padding: '6px 14px',
               borderRadius: '12px',
-              border: '2px solid var(--border-strong)',
               background: 'var(--bg-card-muted)',
               display: 'flex',
               alignItems: 'center',
@@ -208,7 +195,7 @@ export const VotePage: React.FC<VotePageProps> = ({
                 Current Round
               </div>
               <div style={{ fontSize: '14px', fontWeight: 900, color: 'var(--text-main)' }}>
-                {activeRound?.title || 'Round 01'}
+                {activeRound?.title || 'No Active Round'}
               </div>
             </div>
           </div>
@@ -217,7 +204,7 @@ export const VotePage: React.FC<VotePageProps> = ({
           <div className="thought-bubble-wrapper">
             <button
               className="thought-bubble-trigger"
-              title="View Round Brief & Guidelines"
+              aria-label="View Round Brief"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -230,14 +217,14 @@ export const VotePage: React.FC<VotePageProps> = ({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <span className="badge badge-engine">Round Focus</span>
                 <span className="mono" style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 800 }}>
-                  {activeRound?.category || 'Art Style'}
+                  {activeRound?.category || (activeRound ? 'General' : 'None')}
                 </span>
               </div>
               <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)', marginBottom: 6 }}>
-                {activeRound?.title || 'Round 1: Art Direction & Style'}
+                {activeRound?.title || 'No Active Round'}
               </div>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-                {activeRound?.description || 'Vote for your favorite art style ideas to set the visual look of the project.'}
+                {activeRound?.description || (activeRound ? 'No description provided.' : 'No active rounds in database.')}
               </p>
 
               <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 10, marginTop: 10 }}>
@@ -258,8 +245,8 @@ export const VotePage: React.FC<VotePageProps> = ({
                     <span className="mono" style={{ fontWeight: 800, color: 'var(--text-main)' }}>1 Point</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--border-subtle)', paddingTop: 6, marginTop: 4 }}>
-                    <span style={{ color: 'var(--accent-green)', fontWeight: 800 }}>Total Allotted</span>
-                    <span className="mono" style={{ fontWeight: 900, color: 'var(--accent-green)' }}>6 Points Total</span>
+                    <span style={{ color: 'var(--accent-green)', fontWeight: 800 }}>Total</span>
+                    <span className="mono" style={{ fontWeight: 900, color: 'var(--accent-green)' }}>6 Points</span>
                   </div>
                 </div>
               </div>
@@ -267,7 +254,7 @@ export const VotePage: React.FC<VotePageProps> = ({
           </div>
         </div>
 
-        {/* Exclusive Submit Proposal Button */}
+        {/* Submit Proposal Button */}
         <div>
           <button
             className="btn btn-primary"
@@ -282,87 +269,6 @@ export const VotePage: React.FC<VotePageProps> = ({
           </button>
         </div>
       </div>
-
-      {/* Animated Doodle Arrow Pointing from Entries to Empty Slots (First Visit Only) */}
-      {!hasDismissedTutorial && !isComplete && (
-        <div className="doodle-arrow-container" style={{ margin: '0 0 12px 0', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-muted)' }}>
-              Proposals
-            </span>
-
-            <svg
-              width="240"
-              height="44"
-              viewBox="0 0 240 44"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="doodle-arrow-svg"
-            >
-              {/* Hand-drawn curved main doodle line */}
-              <path
-                d="M 12 28 C 65 6, 145 6, 218 24"
-                stroke="var(--accent-gold)"
-                strokeWidth="3"
-                strokeLinecap="round"
-                className="doodle-arrow-path"
-              />
-              {/* Secondary sketch accent line */}
-              <path
-                d="M 16 32 C 68 10, 142 9, 212 26"
-                stroke="var(--accent-green)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeDasharray="4 4"
-                opacity="0.8"
-              />
-              {/* Arrowhead upper barb */}
-              <path
-                d="M 198 12 C 206 18, 214 21, 222 24"
-                stroke="var(--accent-gold)"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              {/* Arrowhead lower barb */}
-              <path
-                d="M 206 36 C 212 30, 218 27, 222 24"
-                stroke="var(--accent-gold)"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              {/* Hand-drawn spiral loop at the tail */}
-              <path
-                d="M 16 26 C 10 20, 6 30, 12 34 C 18 36, 22 26, 17 22"
-                stroke="var(--accent-gold)"
-                strokeWidth="2"
-                strokeLinecap="round"
-                fill="none"
-              />
-            </svg>
-
-            <div className="doodle-badge">
-              <span>Drag to empty slots</span>
-            </div>
-
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={handleDismissTutorial}
-              title="Dismiss tutorial guide"
-              style={{
-                padding: '3px 10px',
-                fontSize: '11px',
-                fontWeight: 700,
-                color: 'var(--text-light)',
-                borderRadius: 'var(--radius-full)',
-                background: 'transparent',
-                borderColor: 'var(--border-subtle)',
-              }}
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
 
       {isBarred && (
         <div className="callout callout-danger" style={{ marginBottom: 12, flexShrink: 0 }}>
@@ -560,7 +466,7 @@ export const VotePage: React.FC<VotePageProps> = ({
                                 </span>
                               </div>
                               <span style={{ fontSize: '11px', color: 'var(--accent-blue)', fontWeight: 700 }}>
-                                Click to Inspect →
+                                Inspect
                               </span>
                             </div>
                           </div>
@@ -643,7 +549,7 @@ export const VotePage: React.FC<VotePageProps> = ({
                   </div>
                 </div>
                 {getEntry(rank1)?.mediaUrl && (
-                  <div style={{ width: 54, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ width: 54, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
                     <img
                       src={getEntry(rank1)!.mediaUrl!}
                       alt={getEntry(rank1)?.title}
@@ -695,7 +601,7 @@ export const VotePage: React.FC<VotePageProps> = ({
                   </div>
                 </div>
                 {getEntry(rank2)?.mediaUrl && (
-                  <div style={{ width: 54, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ width: 54, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
                     <img
                       src={getEntry(rank2)!.mediaUrl!}
                       alt={getEntry(rank2)?.title}
@@ -747,7 +653,7 @@ export const VotePage: React.FC<VotePageProps> = ({
                   </div>
                 </div>
                 {getEntry(rank3)?.mediaUrl && (
-                  <div style={{ width: 54, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border-subtle)' }}>
+                  <div style={{ width: 54, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
                     <img
                       src={getEntry(rank3)!.mediaUrl!}
                       alt={getEntry(rank3)?.title}

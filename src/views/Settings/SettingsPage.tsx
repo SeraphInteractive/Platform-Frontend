@@ -169,7 +169,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               fontSize: '12px',
               padding: '6px 14px',
               borderRadius: '24px',
-              border: '1px solid var(--border-subtle)',
               background: saveFlash ? 'var(--color-success-bg, rgba(16, 185, 129, 0.12))' : 'var(--bg-card-muted)',
               color: saveFlash ? 'var(--color-success)' : 'var(--text-muted)',
               fontWeight: 700,
@@ -331,7 +330,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <div className="card-title">Account</div>
 
             {user ? (
-              <div className="settings-panel-box" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+              <div className="settings-panel-box" style={{ background: 'var(--bg-card)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
                   <div
                     style={{
@@ -339,7 +338,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       height: 56,
                       borderRadius: 14,
                       background: 'var(--bg-primary)',
-                      border: '1px solid var(--border-subtle)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

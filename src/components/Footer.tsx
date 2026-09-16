@@ -442,7 +442,7 @@ export const Footer: React.FC<FooterProps> = ({
         }}
       >
         <div>
-          (C) 2026-2027 Community Film Project. All rights reserved.
+          (C) 2026-2027 Project Stairway. All rights reserved.
         </div>
         <div style={{ textAlign: 'right' }}>
           We are in no way affiliated with Mojang. This is a fan-made community project.

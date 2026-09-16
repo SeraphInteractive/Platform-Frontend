@@ -242,7 +242,6 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
                                 height: 44,
                                 borderRadius: 6,
                                 objectFit: 'cover',
-                                border: '1px solid var(--border-subtle)',
                                 flexShrink: 0,
                               }}
                             />
@@ -253,7 +252,7 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
                             </div>
                             <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2 }}>
                               <span className="badge badge-engine" style={{ fontSize: '9px', padding: '1px 6px' }}>
-                                {entry?.category || 'Art Style'}
+                                {entry?.category || 'General'}
                               </span>
                               <span className="mono" style={{ fontSize: '10px', color: 'var(--text-light)' }}>
                                 {item.entryId}

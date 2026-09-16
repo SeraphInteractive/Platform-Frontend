@@ -381,7 +381,7 @@ const MainDashboardLayout: React.FC = () => {
           }}
         >
           <div>
-            <span className="mono">@platform/vote-ui</span> | Connected to @platform/internal-logic and vote-api
+            <span className="mono">@projectstairway</span>
           </div>
           <div className="mono" style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
             Build v1.0.0-rc4 (2026.09.13)

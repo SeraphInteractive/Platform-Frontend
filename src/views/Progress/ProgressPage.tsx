@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth, getDiscordAvatar } from '../../context/AuthContext.tsx';
 import { useScrollDirection } from '../../hooks/useScrollDirection.ts';
 import { usePipelineProgress } from '../../hooks/usePipelineProgress.ts';
@@ -30,69 +30,26 @@ export interface OrganicUpdate {
   };
 }
 
-const STORAGE_KEY = 'mcs_organic_progress_updates_v1';
+const STORAGE_KEY = 'mcs_organic_progress_updates_v2';
 
-const INITIAL_UPDATES: OrganicUpdate[] = [
-  {
-    id: 'upd-003',
-    updateNumber: 3,
-    title: 'Voice Stems Arrived & Cave Scene Blockout',
-    date: '2026-09-14',
-    authorName: 'Alex',
-    authorRole: 'Production Director',
-    authorAvatar: 'https://cdn.discordapp.com/embed/avatars/1.png',
-    tag: 'Animation',
-    story: 'We just received the first round of community scratch voice stems for Act 1 Scene 3. The pacing feels remarkably punchy. The layout team has moved past initial animatic timing and is currently blocking camera lenses for the Deep Dark sequence. Lighting passes with the approved custom cel-shader profiles are looking incredible.',
-    mediaUrl: '/images/stock_01.jpg',
-  },
-  {
-    id: 'upd-002',
-    updateNumber: 2,
-    title: 'Round 1 Verdict & Shader Benchmarks',
-    date: '2026-09-13',
-    authorName: 'Steve',
-    authorRole: 'Technical Art Lead',
-    authorAvatar: 'https://cdn.discordapp.com/embed/avatars/2.png',
-    tag: 'Voting Results',
-    story: 'Voting for Round 1 has officially concluded with 348 verified ballots and 2,088 total conserved points. Cel Shaded Anime took 1st place for open daylight scenes, while Dark Moody Cinematic PBR secured 2nd place for underground sequences. The engine team is already running test renders combining both styles across biome transitions.',
-    mediaUrl: '/images/stock_02.jpg',
-    roundResults: {
-      roundTitle: 'Round 1: Art Direction & Style',
-      totalBallots: 348,
-      totalPoints: 2088,
-      placements: [
-        { rank: 1, title: 'Cel Shaded Anime', creator: 'AlexCraft', points: 412 },
-        { rank: 2, title: 'Dark Moody Cinematic PBR', creator: 'ShadowArtist', points: 298 },
-        { rank: 3, title: 'Stylized Painterly Clay', creator: 'ClaySculptor', points: 215 },
-      ],
-    },
-  },
-  {
-    id: 'upd-001',
-    updateNumber: 1,
-    title: 'Studio Pipeline Kickoff & Story Outline',
-    date: '2026-09-11',
-    authorName: 'Alex',
-    authorRole: 'Production Director',
-    authorAvatar: 'https://cdn.discordapp.com/embed/avatars/1.png',
-    tag: 'Milestone',
-    story: 'Welcome to the production ledger. Our goal is to build an animated short film with verified community direction at every milestone. The 3-2-1 Borda count voting architecture is online, asset pipelines in Blender are established, and script development for the three core narrative arcs is complete.',
-    mediaUrl: '/textures/crying_obsidian.png',
-  },
-];
+// Purge any legacy mock updates
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('mcs_organic_progress_updates_v1');
+  } catch {}
+}
 
 function getStoredUpdates(): OrganicUpdate[] {
-  if (typeof window === 'undefined') return INITIAL_UPDATES;
+  if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_UPDATES));
-      return INITIAL_UPDATES;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_UPDATES;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return INITIAL_UPDATES;
+    return [];
   }
 }
 
@@ -164,21 +121,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
     return count + pipeline.currentSubStageIndex;
   }, [pipeline.currentBigStageIndex, pipeline.currentSubStageIndex, pipeline.stages]);
 
-  const [inspectedGlobalIndex, setInspectedGlobalIndex] = useState<number>(activeGlobalIndex);
-
-  useEffect(() => {
-    setInspectedGlobalIndex(activeGlobalIndex);
-  }, [activeGlobalIndex]);
-
-  const displayedStep = allSubStages[inspectedGlobalIndex] || allSubStages[0];
-
-  // Major phase anchor points along the slider track (0%, ~18.75%, ~43.75%, ~75%, 100%)
-  const majorPhaseNodes = useMemo(() => [
-    { phaseNumber: 1, name: 'Writing', shortName: 'Writing', color: '#94a3b8', pct: 0, firstStepIndex: 0 },
-    { phaseNumber: 2, name: 'Pre-Vis', shortName: 'Pre-Vis', color: '#3b82f6', pct: (3 / 16) * 100, firstStepIndex: 3 },
-    { phaseNumber: 3, name: 'Production', shortName: 'Production', color: '#eab308', pct: (7 / 16) * 100, firstStepIndex: 7 },
-    { phaseNumber: 4, name: 'Post-Production', shortName: 'Post-Prod', color: '#a855f7', pct: (12 / 16) * 100, firstStepIndex: 12 },
-  ], []);
+  const [hoveredMilestoneIndex, setHoveredMilestoneIndex] = useState<number | null>(null);
 
   // Modal State for new / editing updates
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -196,8 +139,8 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
   // Optional results inputs
   const [hasResults, setHasResults] = useState(false);
   const [resRoundTitle, setResRoundTitle] = useState('');
-  const [resBallots, setResBallots] = useState('42');
-  const [resPoints, setResPoints] = useState('252');
+  const [resBallots, setResBallots] = useState('');
+  const [resPoints, setResPoints] = useState('');
   const [r1Title, setR1Title] = useState('');
   const [r1Creator, setR1Creator] = useState('');
   const [r1Points, setR1Points] = useState('');
@@ -227,8 +170,8 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
     setFormMediaUrl('');
     setHasResults(false);
     setResRoundTitle('');
-    setResBallots('42');
-    setResPoints('252');
+    setResBallots('');
+    setResPoints('');
     setR1Title('');
     setR1Creator('');
     setR1Points('');
@@ -271,8 +214,8 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
     } else {
       setHasResults(false);
       setResRoundTitle('');
-      setResBallots('42');
-      setResPoints('252');
+      setResBallots('');
+      setResPoints('');
       setR1Title('');
       setR1Creator('');
       setR1Points('');
@@ -409,8 +352,8 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
         </div>
       </div>
 
-      {/* Pointed and Subpointed Timeline Slider */}
-      <div className="card" style={{ padding: '36px 40px', background: 'var(--bg-card)' }}>
+      {/* Interactive Milestone Timeline */}
+      <div className="card" style={{ padding: '36px 40px', background: 'var(--bg-card)', position: 'relative' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 28 }}>
           <div>
             <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
@@ -431,7 +374,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
             display: 'grid',
             gridTemplateColumns: '3fr 4fr 5fr 5fr',
             gap: 8,
-            marginBottom: 32,
+            marginBottom: 44,
             padding: '0 4px',
           }}
         >
@@ -478,18 +421,17 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
           })}
         </div>
 
-        {/* Pointed and Subpointed Continuous Slider Track */}
-        <div style={{ position: 'relative', margin: '40px 16px 44px 16px', height: 48, display: 'flex', alignItems: 'center' }}>
+        {/* Numbered Milestones Slider Track */}
+        <div style={{ position: 'relative', margin: '48px 16px 40px 16px', height: 48, display: 'flex', alignItems: 'center' }}>
           {/* Background Rail Bar */}
           <div
             style={{
               position: 'absolute',
               left: 0,
               right: 0,
-              height: 10,
+              height: 8,
               background: 'var(--bg-card-muted)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 5,
+              borderRadius: 4,
               zIndex: 1,
             }}
           />
@@ -500,134 +442,92 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
               position: 'absolute',
               left: 0,
               width: `${Math.max(0, Math.min(100, pipeline.percentage))}%`,
-              height: 10,
+              height: 8,
               background: 'linear-gradient(90deg, #10b981 0%, #3b82f6 50%, #eab308 80%, #a855f7 100%)',
-              borderRadius: 5,
+              borderRadius: 4,
               zIndex: 2,
               transition: 'width 0.4s ease',
             }}
           />
 
-          {/* 17 Subpoints (Milestone Ticks) along the track */}
+          {/* 17 Numbered Milestone Nodes */}
           {allSubStages.map((sub) => {
             const isSubDone = sub.globalIndex < activeGlobalIndex;
             const isSubActive = sub.globalIndex === activeGlobalIndex;
-            const isInspected = sub.globalIndex === inspectedGlobalIndex;
+            const isHovered = hoveredMilestoneIndex === sub.globalIndex;
+            const stepNumber = sub.globalIndex + 1;
 
             return (
               <div
                 key={sub.id}
-                onClick={() => setInspectedGlobalIndex(sub.globalIndex)}
-                title={`Step ${sub.globalIndex + 1}: ${sub.name}`}
+                onMouseEnter={() => setHoveredMilestoneIndex(sub.globalIndex)}
+                onMouseLeave={() => setHoveredMilestoneIndex(null)}
+                onClick={() => setHoveredMilestoneIndex(hoveredMilestoneIndex === sub.globalIndex ? null : sub.globalIndex)}
                 style={{
                   position: 'absolute',
                   left: `${sub.pctPosition}%`,
                   top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: isSubActive ? 18 : isInspected ? 16 : 12,
-                  height: isSubActive ? 18 : isInspected ? 16 : 12,
+                  transform: `translate(-50%, -50%) ${isHovered ? 'scale(1.18)' : 'scale(1)'}`,
+                  width: 26,
+                  height: 26,
                   borderRadius: '50%',
                   background: isSubActive
+                    ? '#10b981'
+                    : isSubDone
+                    ? 'rgba(16, 185, 129, 0.22)'
+                    : isHovered
+                    ? 'var(--bg-card-muted)'
+                    : 'var(--bg-card)',
+                  color: isSubActive
                     ? '#ffffff'
                     : isSubDone
                     ? '#10b981'
-                    : 'var(--bg-card)',
-                  border: isSubActive
-                    ? '3px solid #10b981'
-                    : isInspected
-                    ? `3px solid ${sub.phaseColor}`
-                    : isSubDone
-                    ? '2px solid #10b981'
-                    : '2px solid var(--border-strong)',
-                  boxShadow: isSubActive
-                    ? '0 0 12px rgba(16, 185, 129, 0.8)'
-                    : isInspected
-                    ? `0 0 8px ${sub.phaseColor}`
-                    : 'none',
-                  zIndex: isSubActive ? 10 : isInspected ? 9 : 4,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-              />
-            );
-          })}
-
-          {/* Major Phase Anchor Nodes */}
-          {majorPhaseNodes.map((node) => {
-            const isNodePassed = node.firstStepIndex <= activeGlobalIndex;
-            const isNodeActive = node.phaseNumber === pipeline.currentBigStage.phaseNumber;
-
-            return (
-              <div
-                key={node.phaseNumber}
-                onClick={() => setInspectedGlobalIndex(node.firstStepIndex)}
-                style={{
-                  position: 'absolute',
-                  left: `${node.pct}%`,
-                  top: -24,
-                  transform: 'translateX(-50%)',
+                    : isHovered
+                    ? 'var(--text-main)'
+                    : 'var(--text-muted)',
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px',
+                  fontWeight: 900,
                   cursor: 'pointer',
-                  zIndex: 8,
+                  zIndex: 10,
+                  transition: 'all 0.15s ease',
+                  boxShadow: isSubActive
+                    ? '0 0 14px rgba(16, 185, 129, 0.6)'
+                    : isHovered
+                    ? `0 0 12px ${sub.phaseColor}66`
+                    : '0 2px 6px rgba(0,0,0,0.15)',
                 }}
               >
-                <div
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: '50%',
-                    background: isNodeActive
-                      ? node.color
-                      : isNodePassed
-                      ? '#10b981'
-                      : 'var(--bg-card)',
-                    border: isNodeActive
-                      ? '2px solid #ffffff'
-                      : isNodePassed
-                      ? '2px solid #10b981'
-                      : `2px solid ${node.color}`,
-                    color: isNodeActive || isNodePassed ? '#ffffff' : 'var(--text-main)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '11px',
-                    fontWeight: 900,
-                    boxShadow: isNodeActive ? `0 0 10px ${node.color}` : 'none',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  {node.phaseNumber}
-                </div>
+                {isSubDone ? 'OK' : stepNumber}
               </div>
             );
           })}
 
-          {/* Pointed Indicator Pin sitting at pipeline.percentage% (at 0% by default) */}
+          {/* Active Indicator Pin */}
           <div
             style={{
               position: 'absolute',
               left: `${Math.max(0, Math.min(100, pipeline.percentage))}%`,
-              bottom: 24,
+              bottom: 26,
               transform: 'translateX(-50%)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              zIndex: 12,
+              zIndex: 15,
               pointerEvents: 'none',
               transition: 'left 0.4s ease',
             }}
           >
-            {/* Pointer Badge */}
             <div
               style={{
                 background: '#10b981',
                 color: '#ffffff',
-                fontSize: '11px',
+                fontSize: '10px',
                 fontWeight: 900,
-                padding: '3px 8px',
-                borderRadius: '6px',
+                padding: '2px 7px',
+                borderRadius: '5px',
                 boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                 whiteSpace: 'nowrap',
                 letterSpacing: '0.02em',
@@ -635,217 +535,111 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
             >
               {pipeline.percentage}% ACTIVE
             </div>
-            {/* Downward Pointing Needle */}
             <div
               style={{
                 width: 0,
                 height: 0,
-                borderLeft: '6px solid transparent',
-                borderRight: '6px solid transparent',
-                borderTop: '8px solid #10b981',
+                borderLeft: '5px solid transparent',
+                borderRight: '5px solid transparent',
+                borderTop: '6px solid #10b981',
               }}
             />
           </div>
-        </div>
 
-        {/* Big Typography Active / Inspected Milestone Showcase */}
-        <div
-          style={{
-            background: 'var(--bg-card-muted)',
-            border: `1px solid ${displayedStep.phaseColor}`,
-            borderLeft: `6px solid ${displayedStep.phaseColor}`,
-            borderRadius: '16px',
-            padding: '24px 28px',
-            display: 'grid',
-            gridTemplateColumns: '120px 1fr auto',
-            alignItems: 'center',
-            gap: 24,
-            marginBottom: 20,
-          }}
-        >
-          {/* Big Progress Number */}
-          <div style={{ textAlign: 'center', borderRight: '1px solid var(--border-subtle)', paddingRight: 16 }}>
-            <div style={{ fontSize: '40px', fontWeight: 900, color: 'var(--accent-green)', lineHeight: 1 }}>
-              {pipeline.percentage}%
-            </div>
-            <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginTop: 4 }}>
-              Progress
-            </div>
-          </div>
-
-          {/* Milestone Details */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-              <span style={{ fontSize: '12px', fontWeight: 800, color: displayedStep.phaseColor, textTransform: 'uppercase' }}>
-                Phase {displayedStep.phaseNumber}: {displayedStep.phaseName}
-              </span>
-              <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                Step {displayedStep.globalIndex + 1} of 17
-              </span>
-            </div>
-
-            <div style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>
-              {displayedStep.name}
-            </div>
-
-            <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: 2 }}>
-              {displayedStep.department} | Supervisor: <strong style={{ color: 'var(--text-main)' }}>{displayedStep.supervisor}</strong>
-            </div>
-
-            <div style={{ fontSize: '15px', color: 'var(--text-main)', marginTop: 8, lineHeight: 1.5 }}>
-              {displayedStep.description}
-            </div>
-          </div>
-
-          {/* Deliverables and Status Badges */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
-            {displayedStep.deliverable && (
-              <span className="badge badge-engine" style={{ fontSize: '11px', padding: '5px 12px' }}>
-                {displayedStep.deliverable}
-              </span>
-            )}
-            <span
-              className="badge"
-              style={{
-                fontSize: '11px',
-                padding: '5px 12px',
-                background: displayedStep.globalIndex === activeGlobalIndex
-                  ? '#10b981'
-                  : displayedStep.globalIndex < activeGlobalIndex
-                  ? 'var(--bg-card)'
-                  : 'var(--bg-card)',
-                color: displayedStep.globalIndex <= activeGlobalIndex ? '#ffffff' : 'var(--text-muted)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              {displayedStep.globalIndex === activeGlobalIndex
-                ? 'Active Step'
-                : displayedStep.globalIndex < activeGlobalIndex
-                ? 'Completed'
-                : 'Upcoming'}
-            </span>
-          </div>
-        </div>
-
-        {/* Supervisor Status Note */}
-        {pipeline.statusNote && (
-          <div
-            style={{
-              padding: '14px 20px',
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-subtle)',
-              borderLeft: '4px solid var(--accent-green)',
-              borderRadius: '8px',
-            }}
-          >
-            <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
-              Supervisor Status Note
-            </div>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-main)', lineHeight: 1.5 }}>
-              {pipeline.statusNote}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* 4-Phase Roadmap Breakdown (Clean Large Typography - No Buttons) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div>
-          <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-            Phases
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
-          {pipeline.stages.map((stage) => {
-            const isStageActive = stage.phaseNumber === pipeline.currentBigStage.phaseNumber;
-            const isStageDone = stage.phaseNumber < pipeline.currentBigStage.phaseNumber;
+          {/* Floating Hoverbox with Milestone Details */}
+          {hoveredMilestoneIndex !== null && (() => {
+            const hoveredStep = allSubStages[hoveredMilestoneIndex];
+            if (!hoveredStep) return null;
+            const isSubDone = hoveredStep.globalIndex < activeGlobalIndex;
+            const isSubActive = hoveredStep.globalIndex === activeGlobalIndex;
+            const stepNumber = hoveredStep.globalIndex + 1;
+            const leftPct = hoveredStep.pctPosition;
 
             return (
               <div
-                key={stage.id}
-                className="white-card"
                 style={{
-                  padding: '24px 26px',
-                  borderRadius: '16px',
-                  borderTop: `6px solid ${stage.color}`,
+                  position: 'absolute',
+                  bottom: 50,
+                  width: 340,
+                  maxWidth: 'calc(100% - 24px)',
+                  background: 'var(--bg-card)',
+                  borderRadius: '12px',
+                  padding: '16px 18px',
+                  boxShadow: '0 16px 36px rgba(0, 0, 0, 0.55)',
+                  zIndex: 50,
+                  pointerEvents: 'none',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 14,
+                  gap: 8,
+                  ...(leftPct < 22
+                    ? { left: 0 }
+                    : leftPct > 78
+                    ? { right: 0, left: 'auto' }
+                    : { left: `${leftPct}%`, transform: 'translateX(-50%)' }),
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="mono" style={{ fontSize: '12px', fontWeight: 900, color: stage.color, textTransform: 'uppercase' }}>
-                    Phase {stage.phaseNumber}
-                  </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: '11px', fontWeight: 800, color: hoveredStep.phaseColor, textTransform: 'uppercase' }}>
+                      Phase {hoveredStep.phaseNumber}: {hoveredStep.phaseName}
+                    </span>
+                    <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Step {stepNumber} of 17
+                    </span>
+                  </div>
                   <span
                     className="badge"
                     style={{
-                      fontSize: '10px',
-                      padding: '3px 8px',
-                      background: isStageActive ? stage.color : isStageDone ? '#10b981' : 'var(--bg-card-muted)',
-                      color: isStageActive || isStageDone ? '#ffffff' : 'var(--text-muted)',
+                      fontSize: '9px',
+                      padding: '2px 6px',
+                      background: isSubActive ? '#10b981' : isSubDone ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-card-muted)',
+                      color: isSubActive ? '#ffffff' : isSubDone ? '#10b981' : 'var(--text-muted)',
                     }}
                   >
-                    {isStageActive ? 'Active' : isStageDone ? 'Completed' : 'Upcoming'}
+                    {isSubActive ? 'Active' : isSubDone ? 'Completed' : 'Upcoming'}
                   </span>
                 </div>
 
-                <div>
-                  <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-main)' }}>
-                    {stage.name}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 2 }}>
-                    Supervisors: {stage.supervisors.join(', ')}
-                  </div>
+                <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1.25 }}>
+                  {hoveredStep.name}
                 </div>
 
-                <div style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: 1.5 }}>
-                  {stage.info}
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {hoveredStep.department} | Supervisor: <strong style={{ color: 'var(--text-main)' }}>{hoveredStep.supervisor}</strong>
                 </div>
 
-                {/* Sub-Stages List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 'auto', paddingTop: 10, borderTop: '1px solid var(--border-subtle)' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                    Milestones
+                <div style={{ fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.45 }}>
+                  {hoveredStep.description}
+                </div>
+
+                {hoveredStep.deliverable && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                      Deliverable:
+                    </span>
+                    <span className="badge badge-engine" style={{ fontSize: '10px', padding: '2px 8px' }}>
+                      {hoveredStep.deliverable}
+                    </span>
                   </div>
-                  {stage.subStages.map((sub, sIdx) => {
-                    const isSubCurrent = isStageActive && sIdx === pipeline.currentSubStageIndex;
-                    const isSubPassed = isStageDone || (isStageActive && sIdx < pipeline.currentSubStageIndex);
-
-                    return (
-                      <div
-                        key={sub.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 10px',
-                          borderRadius: '6px',
-                          background: isSubCurrent ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
-                          fontSize: '12px',
-                        }}
-                      >
-                        <span style={{ fontWeight: isSubCurrent ? 800 : 500, color: isSubCurrent ? '#10b981' : 'var(--text-main)' }}>
-                          {sub.shortName}
-                        </span>
-                        <span
-                          className="mono"
-                          style={{
-                            fontSize: '10px',
-                            color: isSubCurrent ? '#10b981' : isSubPassed ? 'var(--text-muted)' : 'var(--text-light)',
-                            fontWeight: 700,
-                          }}
-                        >
-                          {isSubCurrent ? 'ACTIVE' : isSubPassed ? 'DONE' : 'PENDING'}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                )}
               </div>
             );
-          })}
+          })()}
+        </div>
+
+        {/* Footer Summary Row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>
+              Current Milestone:
+            </span>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)' }}>
+              Step {activeGlobalIndex + 1}: {allSubStages[activeGlobalIndex]?.name || 'Writing'}
+            </span>
+          </div>
+          <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            Hover over numbered milestones for details
+          </span>
         </div>
       </div>
 
@@ -885,7 +679,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {filteredUpdates.length === 0 ? (
           <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
-            No updates found matching your search.
+            {updates.length === 0 ? 'No production updates recorded yet in ledger.' : 'No updates found matching your search.'}
           </div>
         ) : (
           filteredUpdates.map((upd) => (
@@ -929,7 +723,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
                     <img
                       src={upd.authorAvatar || 'https://cdn.discordapp.com/embed/avatars/1.png'}
                       alt={upd.authorName}
-                      style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid var(--border-strong)', objectFit: 'cover' }}
+                      style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }}
                     />
                     <div>
                       <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
@@ -977,7 +771,6 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
                   style={{
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    border: '1px solid var(--border-subtle)',
                     background: '#000000',
                     maxHeight: 400,
                   }}
@@ -995,7 +788,6 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
                 <div
                   style={{
                     background: 'var(--bg-card-muted)',
-                    border: '1px solid var(--border-subtle)',
                     borderRadius: '12px',
                     padding: '20px 24px',
                     marginTop: 4,
@@ -1026,7 +818,6 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
                           padding: '8px 14px',
                           borderRadius: '8px',
                           background: 'var(--bg-card)',
-                          border: '1px solid var(--border-subtle)',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1176,7 +967,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
                         <label className="label">Round Title</label>
                         <input
                           type="text"
-                          placeholder="Round 1: Art Direction"
+                          placeholder="e.g. Scene Concept Round"
                           value={resRoundTitle}
                           onChange={(e) => setResRoundTitle(e.target.value)}
                           className="input"

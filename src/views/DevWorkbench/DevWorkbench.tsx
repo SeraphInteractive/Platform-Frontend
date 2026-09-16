@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   useActiveRound,
   useVotingRounds,
@@ -13,11 +13,11 @@ import {
 } from '../../hooks/useVotingApi.ts';
 import { useAuth, isStaff } from '../../context/AuthContext.tsx';
 import {
-  calculate_moments_and_variance,
   analyze_raid_risk,
+  aggregate_scores,
+  EntryScoreBreakdown,
 } from '@platform/internal-logic';
 import { analyzeSyntheticContent, AiDetectionResult } from '../../utils/aiDetector.ts';
-import { ConservationChart } from './ConservationChart.tsx';
 import { MomentsVarianceChart } from './MomentsVarianceChart.tsx';
 import { RaidTelemetryChart } from './RaidTelemetryChart.tsx';
 import { SupervisorModerationChart } from './SupervisorModerationChart.tsx';
@@ -30,7 +30,7 @@ interface DevWorkbenchProps {
   onOpenCreateRound?: () => void;
   onNavigateTab?: (tab: NavTabId) => void;
   onSelectEntryForVote?: (entryId: string) => void;
-  defaultTab?: 'moderation' | 'invariants' | 'telemetry' | 'network' | 'roles';
+  defaultTab?: 'moderation' | 'moments' | 'telemetry' | 'network' | 'roles';
 }
 
 export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
@@ -39,7 +39,9 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
   defaultTab = 'moderation',
 }) => {
   const { user } = useAuth();
-  const [activeConsoleTab, setActiveConsoleTab] = useState<'moderation' | 'invariants' | 'telemetry' | 'network' | 'roles'>(defaultTab);
+  const [activeConsoleTab, setActiveConsoleTab] = useState<'moderation' | 'moments' | 'telemetry' | 'network' | 'roles'>(
+    (defaultTab as any) === 'invariants' ? 'telemetry' : defaultTab
+  );
 
   const { data: rounds = [] } = useVotingRounds();
   const { activeRound } = useActiveRound();
@@ -51,12 +53,19 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
   const { data: leaderboardData } = useLiveLeaderboard(currentRoundId, entries);
   const { data: ballots = [] } = useLiveBallots(currentRoundId);
 
-  const leaderboard = leaderboardData?.leaderboard || [];
-  const totalBallots = leaderboardData?.totalBallots || ballots.length || 0;
-  const totalPointsAwarded = leaderboardData?.totalPointsAwarded || 0;
-  const expectedPoints = leaderboardData?.expectedPoints || 0;
-  const isConserved = leaderboardData?.isConserved ?? true;
-  const deltaPoints = totalPointsAwarded - expectedPoints;
+  const localAggregation = useMemo(() => {
+    if (entries.length === 0) return null;
+    return aggregate_scores(entries.map((e) => e.id), ballots);
+  }, [entries, ballots]);
+
+  const leaderboard = leaderboardData?.leaderboard?.length
+    ? leaderboardData.leaderboard
+    : (localAggregation?.leaderboard as EntryScoreBreakdown[] || []);
+
+  const totalBallots = leaderboardData?.totalBallots || ballots.length || localAggregation?.totalBallots || 0;
+  const totalPointsAwarded = leaderboardData?.totalPointsAwarded || localAggregation?.totalPointsAwarded || (totalBallots * 6);
+  const expectedPoints = leaderboardData?.expectedPoints || localAggregation?.expectedPoints || (totalBallots * 6);
+  const isConserved = leaderboardData?.isConserved ?? localAggregation?.isConserved ?? true;
 
   // Moderation state: filter, search, inspection modal, pagination
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'flagged' | 'rejected' | 'ai_flagged'>('all');
@@ -119,8 +128,6 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
     appearanceCount: 0,
     rawScore: 0,
   };
-
-  const moments = calculate_moments_and_variance(currentBreakdown, totalBallots);
 
   const targetRaidBreakdown = leaderboard.find((item) => item.entryId === selectedRaidEntry) || {
     entryId: selectedRaidEntry,
@@ -208,6 +215,10 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
     );
   }
 
+  const hasTelemetryAnomaly = telemetryList.some(
+    (t) => t.severity === 'CRITICAL_RAID' || t.severity === 'SUSPICIOUS'
+  );
+
   return (
     <div className="container">
       {/* Console Sub-Navigation */}
@@ -220,16 +231,29 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
             Pitches
           </button>
           <button
-            className={`btn btn-sm ${activeConsoleTab === 'invariants' ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setActiveConsoleTab('invariants')}
+            className={`btn btn-sm ${activeConsoleTab === 'moments' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setActiveConsoleTab('moments')}
           >
-            Invariants
+            Moments
           </button>
           <button
             className={`btn btn-sm ${activeConsoleTab === 'telemetry' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setActiveConsoleTab('telemetry')}
+            style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            Telemetry
+            <span>Telemetry</span>
+            {hasTelemetryAnomaly && (
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  background: '#ef4444',
+                  boxShadow: '0 0 8px #ef4444',
+                }}
+                title="Telemetry anomaly detected"
+              />
+            )}
           </button>
           <button
             className={`btn btn-sm ${activeConsoleTab === 'network' ? 'btn-primary' : 'btn-secondary'}`}
@@ -252,13 +276,44 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
       {/* Sub-View 1: Moderation & Pitches */}
       {activeConsoleTab === 'moderation' && (
-        <div className="card">
-          <div className="card-header">
+        <div className="card" style={{ padding: '28px 32px' }}>
+          <div className="card-header" style={{ marginBottom: 20 }}>
             <div>
-              <div className="card-title">Pitches</div>
-              <div className="card-desc" style={{ fontStyle: 'italic' }}>Review candidate proposals, audit status, and manage voting rounds.</div>
+              <div className="card-title" style={{ fontSize: '20px' }}>Pitches</div>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Round Selector & Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>Round:</span>
+                <select
+                  value={currentRoundId}
+                  onChange={(e) => setSelectedRoundId(e.target.value)}
+                  className="select"
+                  style={{ maxWidth: 220, fontSize: '12px', padding: '5px 10px' }}
+                >
+                  {rounds.length === 0 ? (
+                    <option value="">No rounds in database</option>
+                  ) : (
+                    rounds.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title} ({r.status})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {rounds.length > 0 && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ color: '#ef4444', fontSize: '11px', padding: '5px 10px' }}
+                  onClick={() => handleDeleteRound(currentRoundId)}
+                  title="Delete this round and its proposals"
+                >
+                  Delete Round
+                </button>
+              )}
+
               {onOpenCreateRound && (
                 <button className="btn btn-secondary btn-sm" onClick={onOpenCreateRound}>
                   + New Round
@@ -273,38 +328,10 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
           </div>
 
           {moderationFeedback && (
-            <div style={{ padding: '8px 12px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)', fontSize: '12px', fontWeight: 700, marginBottom: 14 }}>
+            <div style={{ padding: '10px 14px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: '8px', color: 'var(--text-main)', fontSize: '12px', fontWeight: 700, marginBottom: 16 }}>
               {moderationFeedback}
             </div>
           )}
-
-          {/* Round Selector & Controls */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>Target Round:</span>
-            <select
-              value={currentRoundId}
-              onChange={(e) => setSelectedRoundId(e.target.value)}
-              className="select"
-              style={{ maxWidth: 280 }}
-            >
-              {rounds.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.title} ({r.status})
-                </option>
-              ))}
-            </select>
-
-            {rounds.length > 0 && (
-              <button
-                className="btn btn-secondary btn-sm"
-                style={{ color: '#ef4444', fontSize: '11px', padding: '4px 10px' }}
-                onClick={() => handleDeleteRound(currentRoundId)}
-                title="Delete this round and its proposals"
-              >
-                Delete Round
-              </button>
-            )}
-          </div>
 
           {/* Visual Moderation Category Distribution, Queue Health & AI Radar */}
           <SupervisorModerationChart
@@ -354,16 +381,16 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
             return (
               <>
-                <div className="table-responsive">
-                  <table className="table">
+                <div className="table-responsive" style={{ width: '100%', overflowX: 'auto' }}>
+                  <table className="table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                     <thead>
                       <tr>
-                        <th>Proposal</th>
-                        <th>Category</th>
-                        <th>Submitter</th>
-                        <th>AI Radar</th>
-                        <th>Status</th>
-                        <th style={{ textAlign: 'right' }}>Actions</th>
+                        <th style={{ minWidth: 260 }}>Proposal</th>
+                        <th style={{ width: 140, whiteSpace: 'nowrap' }}>Category</th>
+                        <th style={{ width: 160, whiteSpace: 'nowrap' }}>Submitter</th>
+                        <th style={{ width: 130, whiteSpace: 'nowrap' }}>AI Radar</th>
+                        <th style={{ width: 130, whiteSpace: 'nowrap' }}>Status</th>
+                        <th style={{ width: 160, textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -377,7 +404,6 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                         paginatedEntries.map((entry) => {
                           const st = entry.status || 'approved';
                           const isApproved = st === 'approved';
-                          const isPending = st === 'pending' || st === 'pending_review';
                           const isFlagged = st === 'flagged';
                           const isRejected = st === 'rejected';
                           const aiResult = aiDetectionMap.get(entry.id);
@@ -390,7 +416,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                                     <img
                                       src={entry.mediaUrl}
                                       alt={entry.title}
-                                      style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0, border: '1px solid var(--border-subtle)' }}
+                                      style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }}
                                     />
                                   )}
                                   <div>
@@ -422,7 +448,6 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                                       borderRadius: 4,
                                       background: aiResult.isFlagged ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.12)',
                                       color: aiResult.isFlagged ? '#ef4444' : '#10b981',
-                                      border: `1px solid ${aiResult.isFlagged ? 'rgba(239, 68, 68, 0.3)' : 'rgba(16, 185, 129, 0.3)'}`,
                                     }}
                                     title={aiResult.confidenceLabel}
                                   >
@@ -444,19 +469,19 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                                 </span>
                               </td>
                               <td style={{ textAlign: 'right' }}>
-                                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                                   <button
                                     className="btn btn-secondary btn-sm"
-                                    style={{ fontSize: '10px', padding: '3px 8px' }}
+                                    style={{ fontSize: '11px', padding: '3px 8px' }}
                                     onClick={() => setInspectedEntry(entry)}
                                   >
                                     Inspect
                                   </button>
 
-                                  {isPending && (
+                                  {!isApproved && (
                                     <button
-                                      className="btn btn-primary btn-sm"
-                                      style={{ fontSize: '10px', padding: '3px 8px', background: '#10b981', borderColor: '#10b981' }}
+                                      className="btn btn-secondary btn-sm"
+                                      style={{ fontSize: '11px', padding: '3px 8px', color: '#10b981' }}
                                       onClick={() => handleUpdateStatus(entry.id, 'approved')}
                                     >
                                       Approve
@@ -466,29 +491,30 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                                   {!isFlagged && (
                                     <button
                                       className="btn btn-secondary btn-sm"
-                                      style={{ fontSize: '10px', padding: '3px 8px', color: '#ef4444' }}
+                                      style={{ fontSize: '11px', padding: '3px 8px', color: '#f59e0b' }}
                                       onClick={() => handleUpdateStatus(entry.id, 'flagged')}
                                     >
                                       Flag
                                     </button>
                                   )}
 
-                                  {(isFlagged || isRejected) && (
+                                  {!isRejected && (
                                     <button
                                       className="btn btn-secondary btn-sm"
-                                      style={{ fontSize: '10px', padding: '3px 8px', color: '#10b981' }}
-                                      onClick={() => handleUpdateStatus(entry.id, 'approved')}
+                                      style={{ fontSize: '11px', padding: '3px 8px', color: '#ef4444' }}
+                                      onClick={() => handleUpdateStatus(entry.id, 'rejected')}
                                     >
-                                      Reinstate
+                                      Reject
                                     </button>
                                   )}
 
                                   <button
                                     className="btn btn-secondary btn-sm"
-                                    style={{ fontSize: '10px', padding: '3px 8px', color: '#ef4444' }}
+                                    style={{ fontSize: '11px', padding: '3px 8px', color: 'var(--text-muted)' }}
                                     onClick={() => handleDeleteEntry(entry.id)}
+                                    title="Delete Proposal"
                                   >
-                                    Delete
+                                    &times;
                                   </button>
                                 </div>
                               </td>
@@ -502,7 +528,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
                 {/* Pagination Controls */}
                 {filteredEntries.length > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 14, paddingTop: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                         Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredEntries.length)} of {filteredEntries.length} proposals
@@ -555,121 +581,115 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
         </div>
       )}
 
-      {/* Sub-View 2: Invariants & Math */}
-      {activeConsoleTab === 'invariants' && (
-        <>
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">Conservation</div>
-              <span className={`badge ${isConserved ? 'badge-success' : 'badge-danger'}`}>
-                {isConserved ? 'Conserved' : 'Leak Detected'}
-              </span>
+      {/* Sub-View 2: Statistical Moments & Dispersion */}
+      {activeConsoleTab === 'moments' && (
+        <div className="card" style={{ padding: '28px 32px' }}>
+          <div className="card-header" style={{ marginBottom: 20 }}>
+            <div>
+              <div className="card-title" style={{ fontSize: '20px' }}>Moments</div>
             </div>
 
-            <div className="landing-metrics-grid">
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Ballots (N)</div>
-                <div className="landing-metric-value mono text-blue">{totalBallots}</div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>Round:</span>
+                <select
+                  value={currentRoundId}
+                  onChange={(e) => setSelectedRoundId(e.target.value)}
+                  className="select"
+                  style={{ maxWidth: 200, fontSize: '12px', padding: '5px 10px' }}
+                >
+                  {rounds.length === 0 ? (
+                    <option value="">No rounds in database</option>
+                  ) : (
+                    rounds.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title} ({r.status})
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Expected (6N)</div>
-                <div className="landing-metric-value mono">{expectedPoints}</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Total Awarded</div>
-                <div className="landing-metric-value mono">{totalPointsAwarded}</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Delta</div>
-                <div className={`landing-metric-value mono ${deltaPoints === 0 ? 'text-green' : 'text-danger'}`}>
-                  {deltaPoints}
-                </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>Candidate:</span>
+                <select
+                  className="select"
+                  style={{ maxWidth: 220, fontSize: '12px', padding: '5px 10px' }}
+                  value={selectedMomentsEntry}
+                  onChange={(e) => setSelectedMomentsEntry(e.target.value)}
+                >
+                  {entries.length === 0 ? (
+                    <option value="">No proposals in round</option>
+                  ) : (
+                    entries.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.title}
+                      </option>
+                    ))
+                  )}
+                </select>
               </div>
             </div>
-
-            <ConservationChart
-              totalBallots={totalBallots}
-              expectedPoints={expectedPoints}
-              totalPointsAwarded={totalPointsAwarded}
-              isConserved={isConserved}
-              leaderboard={leaderboard}
-              ballots={ballots}
-            />
           </div>
 
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">Moments</div>
-              <select
-                className="select-field"
-                value={selectedMomentsEntry}
-                onChange={(e) => setSelectedMomentsEntry(e.target.value)}
-              >
-                {entries.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="landing-metrics-grid">
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Expectation E[X]</div>
-                <div className="landing-metric-value mono">{moments.expectedScorePerVoter.toFixed(3)}</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Variance Var(X)</div>
-                <div className="landing-metric-value mono">{moments.singleBallotVariance.toFixed(3)}</div>
-              </div>
-              <div className="landing-metric-card">
-                <div className="landing-metric-label">Std Dev sigma</div>
-                <div className="landing-metric-value mono">{moments.standardDeviation.toFixed(3)}</div>
-              </div>
-            </div>
-
-            <MomentsVarianceChart
-              breakdown={currentBreakdown}
-              totalBallots={totalBallots}
-            />
-          </div>
-        </>
+          <MomentsVarianceChart
+            breakdown={currentBreakdown}
+            totalBallots={totalBallots}
+          />
+        </div>
       )}
 
       {/* Sub-View 3: Raid Telemetry */}
       {activeConsoleTab === 'telemetry' && (
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">Telemetry</div>
-            <select
-              className="select-field"
-              value={selectedRaidEntry}
-              onChange={(e) => setSelectedRaidEntry(e.target.value)}
-            >
-              {entries.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.title}
-                </option>
-              ))}
-            </select>
+        <div className="card" style={{ padding: '28px 32px' }}>
+          <div className="card-header" style={{ marginBottom: 20 }}>
+            <div>
+              <div className="card-title" style={{ fontSize: '20px' }}>Telemetry</div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>Round:</span>
+                <select
+                  value={currentRoundId}
+                  onChange={(e) => setSelectedRoundId(e.target.value)}
+                  className="select"
+                  style={{ maxWidth: 200, fontSize: '12px', padding: '5px 10px' }}
+                >
+                  {rounds.length === 0 ? (
+                    <option value="">No rounds in database</option>
+                  ) : (
+                    rounds.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title} ({r.status})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)' }}>Candidate:</span>
+                <select
+                  className="select"
+                  style={{ maxWidth: 220, fontSize: '12px', padding: '5px 10px' }}
+                  value={selectedRaidEntry}
+                  onChange={(e) => setSelectedRaidEntry(e.target.value)}
+                >
+                  {entries.length === 0 ? (
+                    <option value="">No proposals in round</option>
+                  ) : (
+                    entries.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.title}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div className="landing-metrics-grid">
-            <div className="landing-metric-card">
-              <div className="landing-metric-label">Risk Level</div>
-              <div className="landing-metric-value mono text-green">{targetRaidTelemetry.severity}</div>
-            </div>
-            <div className="landing-metric-card">
-              <div className="landing-metric-label">Entropy Score</div>
-              <div className="landing-metric-value mono">{targetRaidTelemetry.rankEntropy.toFixed(3)}</div>
-            </div>
-            <div className="landing-metric-card">
-              <div className="landing-metric-label">Top-Heavy Ratio</div>
-              <div className="landing-metric-value mono">{(targetRaidTelemetry.breakdown.rank1ToTotalRatio * 100).toFixed(1)}%</div>
-            </div>
-          </div>
-
-          {/* Visual Shannon Entropy & Velocity Z-Score Anomaly Gauge with Live Graph on top, Outlier Radar, and Tutorial below */}
           <RaidTelemetryChart
             telemetry={targetRaidTelemetry}
             velocityZScore={observedVelocityZ}
@@ -678,16 +698,20 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
             leaderboard={leaderboard}
             telemetryList={telemetryList}
             onSelectEntry={(id) => setSelectedRaidEntry(id)}
+            totalBallots={totalBallots}
+            expectedPoints={expectedPoints}
+            totalPointsAwarded={totalPointsAwarded}
+            isConserved={isConserved}
           />
         </div>
       )}
 
-      {/* Sub-View 4: Live Network Telemetry */}
+      {/* Sub-View 5: Live Network Telemetry */}
       {activeConsoleTab === 'network' && (
         <NetworkTelemetryChart roundId={currentRoundId} />
       )}
 
-      {/* Sub-View 5: Roles & Staff Management */}
+      {/* Sub-View 6: Roles & Staff Management */}
       {activeConsoleTab === 'roles' && (
         <RolesManagementView />
       )}
@@ -725,10 +749,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
             <div className="card-header" style={{ marginBottom: 14 }}>
               <div>
                 <div className="card-title" style={{ fontSize: '16px' }}>
-                  Proposal Inspection
-                </div>
-                <div className="card-desc">
-                  Detailed metadata and AI content review.
+                  Inspect
                 </div>
               </div>
               <button
@@ -758,7 +779,6 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
               <div
                 style={{
                   background: inspectedAiResult.isFlagged ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)',
-                  border: `1px solid ${inspectedAiResult.isFlagged ? '#ef4444' : '#10b981'}`,
                   borderRadius: 'var(--radius-sm)',
                   padding: '12px 14px',
                   marginBottom: 16,
@@ -773,7 +793,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                   </span>
                 </div>
 
-                <div style={{ height: 6, background: 'var(--border-subtle)', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+                <div style={{ height: 6, background: 'rgba(255, 255, 255, 0.1)', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
                   <div
                     style={{
                       width: `${inspectedAiResult.aiProbability}%`,
@@ -826,7 +846,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14 }}>
               <button
                 className="btn btn-secondary btn-sm"
                 style={{ color: '#ef4444' }}

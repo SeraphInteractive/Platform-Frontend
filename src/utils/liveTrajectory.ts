@@ -47,7 +47,7 @@ export function computeLiveTrajectories(
         color: col.color,
         strokeWidth: 2.2,
         points: [{ x: 0, y: 0 }],
-        annotations: [{ x: 0, y: 0, text: '0 pts', color: col.accent, align: 'start' }],
+        annotations: [],
         description: 'Standby awaiting incoming live ballots.',
       };
     });
@@ -184,13 +184,15 @@ export function computeLiveTrajectories(
     const annotations: { x: number; y: number; text: string; color?: string; align?: 'start' | 'middle' | 'end' }[] = [];
     if (visiblePoints.length > 0) {
       const lastPt = visiblePoints[visiblePoints.length - 1]!;
-      annotations.push({
-        x: lastPt.x,
-        y: lastPt.y + 2,
-        text: `${lastPt.y}p`,
-        color: col.accent,
-        align: 'end',
-      });
+      if (lastPt.x > 0) {
+        annotations.push({
+          x: lastPt.x,
+          y: lastPt.y,
+          text: `${lastPt.y} pts`,
+          color: col.color,
+          align: 'end',
+        });
+      }
     }
 
     let desc = '';
@@ -236,15 +238,15 @@ export function computeLiveTrajectories(
         strokeWidth: 2.2,
         dashArray: '3,2',
         points: visiblePoints,
-        annotations: [
+        annotations: visiblePoints.length > 0 && visiblePoints[visiblePoints.length - 1]!.x > 0 ? [
           {
-            x: visiblePoints[visiblePoints.length - 1]?.x || windowMax,
-            y: (visiblePoints[visiblePoints.length - 1]?.y || 0) + 2,
-            text: `#${focusedRank} (${focusedScore}p)`,
+            x: visiblePoints[visiblePoints.length - 1]!.x,
+            y: visiblePoints[visiblePoints.length - 1]!.y,
+            text: `#${focusedRank} (${focusedScore} pts)`,
             color: '#f43f5e',
             align: 'end',
           },
-        ],
+        ] : [],
         description: `Rank #${focusedRank} across all ${totalSubmissions} submissions (${focusedScore} pts).`,
       });
     }
@@ -255,7 +257,7 @@ export function computeLiveTrajectories(
     series.push({
       id: 'field_median',
       name: 'Field Median (50th %ile)',
-      color: 'var(--text-muted)',
+      color: '#64748b',
       strokeWidth: 1.5,
       dashArray: '4,4',
       points: medianPoints,

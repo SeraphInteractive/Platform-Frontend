@@ -66,7 +66,7 @@ export const TermsPage: React.FC<TermsPageProps> = ({
             Affiliation
           </h2>
           <p>
-            The Community Film Project is an independent, non-commercial, fan-made initiative. <strong>We are in no way affiliated with, endorsed by, sponsored by, or associated with Mojang Studios, Microsoft Corporation, or their subsidiaries.</strong> All Minecraft trademarks, names, and game assets belong exclusively to their respective owners.
+            Project Stairway is an independent, non-commercial, fan-made initiative. <strong>We are in no way affiliated with, endorsed by, sponsored by, or associated with Mojang Studios, Microsoft Corporation, or their subsidiaries.</strong> All Minecraft trademarks, names, and game assets belong exclusively to their respective owners.
           </p>
         </section>
 
