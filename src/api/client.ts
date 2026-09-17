@@ -8,13 +8,13 @@ export interface ApiErrorResponse {
   message?: string;
 }
 
-const DEFAULT_API_URL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env?.VITE_API_URL || '/api/v1';
+const DEFAULT_API_URL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env?.VITE_API_URL || 'https://api.seraphinteractive.com/api/v1';
 
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('mcs_api_base_url');
-    // Clear out deprecated Google Cloud IP if stored
-    if (saved && (saved.includes('35.192.18.39') || saved.includes('undefined') || saved.includes('null'))) {
+    // Clear out deprecated Google Cloud IP or relative path if stored
+    if (saved && (saved.includes('35.192.18.39') || saved.includes('undefined') || saved.includes('null') || saved === '/api/v1')) {
       localStorage.removeItem('mcs_api_base_url');
       return DEFAULT_API_URL;
     }
