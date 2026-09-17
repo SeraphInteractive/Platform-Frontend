@@ -2,21 +2,22 @@ import React, { useState, useRef } from 'react';
 import { useSubmitEntry } from '../hooks/useVotingApi.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { sounds } from '../utils/soundEffects.ts';
-
-interface CreatePitchModalProps {
-  isOpen: boolean;
-  roundId: string;
-  onClose: () => void;
-  onCreated?: (entryId: string) => void;
-}
+import { compressImageToWebP } from '../utils/imageCompression.ts';
 
 const MAX_CHAR_LIMIT = 1500; // approx 256 words
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 
+interface CreatePitchModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  roundId?: string;
+  onCreated?: (entryId: string) => void;
+}
+
 export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
   isOpen,
-  roundId,
   onClose,
+  roundId,
   onCreated,
 }) => {
   const { isBarred } = useAuth();
@@ -29,11 +30,11 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const submitMutation = useSubmitEntry(roundId);
+  const submitMutation = useSubmitEntry(roundId ?? '');
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -45,9 +46,24 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
 
     sounds.playPop();
     setError(null);
-    setMediaFile(file);
-    setIsVideo(file.type.startsWith('video/'));
-    setMediaPreview(URL.createObjectURL(file));
+
+    const isVid = file.type.startsWith('video/');
+    setIsVideo(isVid);
+
+    if (isVid) {
+      setMediaFile(file);
+      setMediaPreview(URL.createObjectURL(file));
+    } else {
+      try {
+        const compressed = await compressImageToWebP(file, 1920, 1080, 0.85);
+        setMediaFile(compressed.file);
+        setMediaPreview(compressed.dataUrl);
+      } catch {
+        // Fallback to uncompressed file if canvas fails
+        setMediaFile(file);
+        setMediaPreview(URL.createObjectURL(file));
+      }
+    }
   };
 
   const handleRemoveMedia = () => {

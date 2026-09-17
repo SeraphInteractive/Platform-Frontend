@@ -266,6 +266,19 @@ html, body {
   }
 }
 
+@keyframes skeletonPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeletonPulse 1.8s ease-in-out infinite;
+}
+
 #root {
   height: 100vh;
   width: 100vw;

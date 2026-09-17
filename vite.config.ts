@@ -32,5 +32,15 @@ export default defineConfig(({ mode }) => {
         '@platform/internal-logic': resolve(__dirname, '../vote-internals/src/index.ts'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-query': ['@tanstack/react-query'],
+          },
+        },
+      },
+    },
   };
 });

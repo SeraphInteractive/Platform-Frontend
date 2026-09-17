@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SettingsProvider, useSettings } from './context/SettingsContext.tsx';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
@@ -7,17 +7,38 @@ import { CommandPalette } from './components/CommandPalette.tsx';
 import { CreatePitchModal } from './components/CreatePitchModal.tsx';
 import { CreateRoundModal } from './components/CreateRoundModal.tsx';
 import { BlazeTransitionOverlay, type BlazeTransitionRef } from './components/BlazeTransitionOverlay.tsx';
+import { SkeletonCard } from './components/Skeleton.tsx';
 import { LandingPage } from './views/Landing/LandingPage.tsx';
 import { VotePage } from './views/VoterApp/VotePage.tsx';
 import { PublicLeaderboard } from './views/VoterApp/PublicLeaderboard.tsx';
-import { GrabBoxPage } from './views/GrabBox/GrabBoxPage.tsx';
-import { ProgressPage } from './views/Progress/ProgressPage.tsx';
-import { DevWorkbench } from './views/DevWorkbench/DevWorkbench.tsx';
-import { SettingsPage, SettingsSubTab } from './views/Settings/SettingsPage.tsx';
-import { DocsPage, DocsSectionId } from './views/Docs/DocsPage.tsx';
-import { PrivacyPage } from './views/Legal/PrivacyPage.tsx';
-import { TermsPage } from './views/Legal/TermsPage.tsx';
-import { GuidelinesPage } from './views/Legal/GuidelinesPage.tsx';
+import { type SettingsSubTab } from './views/Settings/SettingsPage.tsx';
+import { type DocsSectionId } from './views/Docs/DocsPage.tsx';
+
+// Code-split secondary views with React.lazy
+const DevWorkbench = React.lazy(() =>
+  import('./views/DevWorkbench/DevWorkbench.tsx').then((m) => ({ default: m.DevWorkbench }))
+);
+const DocsPage = React.lazy(() =>
+  import('./views/Docs/DocsPage.tsx').then((m) => ({ default: m.DocsPage }))
+);
+const GrabBoxPage = React.lazy(() =>
+  import('./views/GrabBox/GrabBoxPage.tsx').then((m) => ({ default: m.GrabBoxPage }))
+);
+const ProgressPage = React.lazy(() =>
+  import('./views/Progress/ProgressPage.tsx').then((m) => ({ default: m.ProgressPage }))
+);
+const SettingsPage = React.lazy(() =>
+  import('./views/Settings/SettingsPage.tsx').then((m) => ({ default: m.SettingsPage }))
+);
+const PrivacyPage = React.lazy(() =>
+  import('./views/Legal/PrivacyPage.tsx').then((m) => ({ default: m.PrivacyPage }))
+);
+const TermsPage = React.lazy(() =>
+  import('./views/Legal/TermsPage.tsx').then((m) => ({ default: m.TermsPage }))
+);
+const GuidelinesPage = React.lazy(() =>
+  import('./views/Legal/GuidelinesPage.tsx').then((m) => ({ default: m.GuidelinesPage }))
+);
 import {
   useActiveRound,
   useVotingRounds,
@@ -244,83 +265,91 @@ const MainDashboardLayout: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 'docs' && (
-            <div className="tab-content-area">
-              <DocsPage
-                initialSection={docsSection}
+          <Suspense
+            fallback={
+              <div className="tab-content-area" style={{ padding: 24 }}>
+                <SkeletonCard height={360} />
+              </div>
+            }
+          >
+            {activeTab === 'docs' && (
+              <div className="tab-content-area">
+                <DocsPage
+                  initialSection={docsSection}
+                  onNavigateTab={handleTabChange}
+                  onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'grabbox' && (
+              <div className="tab-content-area">
+                <GrabBoxPage onNavigateTab={handleTabChange} />
+              </div>
+            )}
+
+            {activeTab === 'progress' && (
+              <div className="tab-content-area">
+                <ProgressPage
+                  onNavigateTab={handleTabChange}
+                  onOpenCreateRound={() => setIsCreateRoundOpen(true)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'diagnostics' && (
+              <div className="tab-content-area">
+                <DevWorkbench
+                  onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
+                  onOpenCreateRound={() => setIsCreateRoundOpen(true)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsPage
+                initialSubTab={settingsSubTab}
                 onNavigateTab={handleTabChange}
                 onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
               />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'grabbox' && (
-            <div className="tab-content-area">
-              <GrabBoxPage onNavigateTab={handleTabChange} />
-            </div>
-          )}
+            {activeTab === 'privacy' && (
+              <div className="tab-content-area">
+                <PrivacyPage
+                  onNavigateTab={handleTabChange}
+                  onNavigateDocs={(section) => {
+                    setDocsSection(section);
+                    handleTabChange('docs');
+                  }}
+                />
+              </div>
+            )}
 
-          {activeTab === 'progress' && (
-            <div className="tab-content-area">
-              <ProgressPage
-                onNavigateTab={handleTabChange}
-                onOpenCreateRound={() => setIsCreateRoundOpen(true)}
-              />
-            </div>
-          )}
+            {activeTab === 'terms' && (
+              <div className="tab-content-area">
+                <TermsPage
+                  onNavigateTab={handleTabChange}
+                  onNavigateDocs={(section) => {
+                    setDocsSection(section);
+                    handleTabChange('docs');
+                  }}
+                />
+              </div>
+            )}
 
-          {activeTab === 'diagnostics' && (
-            <div className="tab-content-area">
-              <DevWorkbench
-                onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
-                onOpenCreateRound={() => setIsCreateRoundOpen(true)}
-              />
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <SettingsPage
-              initialSubTab={settingsSubTab}
-              onNavigateTab={handleTabChange}
-              onOpenCreatePitch={() => setIsCreatePitchOpen(true)}
-            />
-          )}
-
-          {activeTab === 'privacy' && (
-            <div className="tab-content-area">
-              <PrivacyPage
-                onNavigateTab={handleTabChange}
-                onNavigateDocs={(section) => {
-                  setDocsSection(section);
-                  handleTabChange('docs');
-                }}
-              />
-            </div>
-          )}
-
-          {activeTab === 'terms' && (
-            <div className="tab-content-area">
-              <TermsPage
-                onNavigateTab={handleTabChange}
-                onNavigateDocs={(section) => {
-                  setDocsSection(section);
-                  handleTabChange('docs');
-                }}
-              />
-            </div>
-          )}
-
-          {activeTab === 'guidelines' && (
-            <div className="tab-content-area">
-              <GuidelinesPage
-                onNavigateTab={handleTabChange}
-                onNavigateDocs={(section) => {
-                  setDocsSection(section);
-                  handleTabChange('docs');
-                }}
-              />
-            </div>
-          )}
+            {activeTab === 'guidelines' && (
+              <div className="tab-content-area">
+                <GuidelinesPage
+                  onNavigateTab={handleTabChange}
+                  onNavigateDocs={(section) => {
+                    setDocsSection(section);
+                    handleTabChange('docs');
+                  }}
+                />
+              </div>
+            )}
+          </Suspense>
         </div>
       </main>
 
