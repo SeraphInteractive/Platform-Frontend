@@ -284,9 +284,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       : rawBase.endsWith('/api')
       ? `${rawBase}/v1`
       : `${rawBase}/api/v1`;
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-    const returnParam = currentOrigin ? `?return_to=${encodeURIComponent(currentOrigin)}` : '';
-    window.location.href = `${cleanBase}/auth/discord${returnParam}`;
+    window.location.href = `${cleanBase}/auth/discord`;
   };
 
   const loginAsUser = (profile: UserProfile) => {
