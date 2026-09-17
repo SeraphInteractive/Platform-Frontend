@@ -61,7 +61,7 @@ const queryClient = new QueryClient({
 });
 
 const MainDashboardLayout: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, loginWithDiscord } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTabId>('landing');
   const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('account_info');
   const [docsSection, setDocsSection] = useState<DocsSectionId>('overview');
@@ -146,6 +146,11 @@ const MainDashboardLayout: React.FC = () => {
   };
 
   const handleSubmitBallot = async () => {
+    if (!isAuthenticated) {
+      alert('Authentication Required: Please log in with Discord to cast your vote.');
+      loginWithDiscord();
+      return;
+    }
     if (!rank1 || !rank2 || !rank3) return;
 
     try {

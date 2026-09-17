@@ -32,7 +32,7 @@ export const VotePage: React.FC<VotePageProps> = ({
   onOpenCreatePitch,
   voterId,
 }) => {
-  const { isBarred } = useAuth();
+  const { isBarred, isAuthenticated, loginWithDiscord } = useAuth();
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(0);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -157,6 +157,10 @@ export const VotePage: React.FC<VotePageProps> = ({
   };
 
   const handleCast = () => {
+    if (!isAuthenticated) {
+      loginWithDiscord();
+      return;
+    }
     onSubmitBallot();
   };
 
@@ -676,19 +680,35 @@ export const VotePage: React.FC<VotePageProps> = ({
             </div>
           )}
 
+          {!isAuthenticated && isComplete && (
+            <div className="callout callout-warning" style={{ marginTop: 6, flexShrink: 0, fontSize: '12px' }}>
+              Authentication required: Please log in with Discord to submit your vote.
+            </div>
+          )}
+
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexShrink: 0 }}>
             <div className="mono" style={{ fontSize: '12px', color: 'var(--text-light)' }}>
               {isComplete ? '3 of 3 Slots Selected' : 'Incomplete Ballot'}
             </div>
 
-            <button
-              className="btn btn-primary"
-              disabled={!validation.isValid || isSubmitting || isBarred}
-              onClick={handleCast}
-              style={{ padding: '10px 28px', fontSize: '13px' }}
-            >
-              {isBarred ? 'Restricted' : isSubmitting ? 'Recording...' : myBallot ? 'Update Vote' : 'Cast Vote'}
-            </button>
+            {!isAuthenticated ? (
+              <button
+                className="btn btn-primary"
+                onClick={loginWithDiscord}
+                style={{ padding: '10px 22px', fontSize: '13px', background: '#5865F2', borderColor: '#5865F2' }}
+              >
+                Log In to Vote
+              </button>
+            ) : (
+              <button
+                className="btn btn-primary"
+                disabled={!validation.isValid || isSubmitting || isBarred}
+                onClick={handleCast}
+                style={{ padding: '10px 28px', fontSize: '13px' }}
+              >
+                {isBarred ? 'Restricted' : isSubmitting ? 'Recording...' : myBallot ? 'Update Vote' : 'Cast Vote'}
+              </button>
+            )}
           </div>
         </div>
       </div>

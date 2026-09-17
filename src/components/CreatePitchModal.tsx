@@ -20,7 +20,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
   roundId,
   onCreated,
 }) => {
-  const { isBarred } = useAuth();
+  const { isBarred, isAuthenticated, loginWithDiscord } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -78,6 +78,10 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      setError('Authentication required: Please log in with Discord to submit a proposal.');
+      return;
+    }
     if (!roundId) {
       setError('No active round found in database. Please wait for an active round to be created.');
       return;
@@ -220,6 +224,31 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
           <strong style={{ color: 'var(--text-main)' }}>Supervisor Review Queue:</strong> New proposals undergo review at the Supervisor Desk before entering the active voting pool.
         </div>
 
+        {!isAuthenticated && (
+          <div
+            className="callout callout-warning"
+            style={{
+              marginBottom: 14,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <div style={{ fontSize: '12px' }}>
+              <strong>Authentication Required:</strong> You must log in with Discord before submitting a proposal.
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={loginWithDiscord}
+              style={{ flexShrink: 0, padding: '5px 12px', fontSize: '11px', background: '#5865F2', borderColor: '#5865F2' }}
+            >
+              Log In
+            </button>
+          </div>
+        )}
+
         {isBarred && (
           <div className="callout callout-danger" style={{ marginBottom: 14 }}>
             Account barred: Your account has accumulated 3 warnings and cannot submit proposals.
@@ -355,14 +384,25 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={submitMutation.isPending || isUploading || isBarred || charCount > MAX_CHAR_LIMIT}
-              style={{ padding: '10px 24px' }}
-            >
-              {isBarred ? 'Restricted' : isUploading || submitMutation.isPending ? 'Submitting...' : 'Submit Proposal'}
-            </button>
+            {!isAuthenticated ? (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={loginWithDiscord}
+                style={{ padding: '10px 24px', background: '#5865F2', borderColor: '#5865F2' }}
+              >
+                Log In with Discord to Submit
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={submitMutation.isPending || isUploading || isBarred || charCount > MAX_CHAR_LIMIT}
+                style={{ padding: '10px 24px' }}
+              >
+                {isBarred ? 'Restricted' : isUploading || submitMutation.isPending ? 'Submitting...' : 'Submit Proposal'}
+              </button>
+            )}
           </div>
         </form>
       </div>
