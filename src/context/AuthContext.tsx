@@ -278,8 +278,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginWithDiscord = () => {
     localStorage.removeItem('mcs_logged_out');
     setIsLoggedOut(false);
-    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
-    window.location.href = `${baseUrl}/auth/discord`;
+    const rawBase = getApiBaseUrl().replace(/\/+$/, '');
+    const cleanBase = rawBase.endsWith('/api/v1')
+      ? rawBase
+      : rawBase.endsWith('/api')
+      ? `${rawBase}/v1`
+      : `${rawBase}/api/v1`;
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    const returnParam = currentOrigin ? `?return_to=${encodeURIComponent(currentOrigin)}` : '';
+    window.location.href = `${cleanBase}/auth/discord${returnParam}`;
   };
 
   const loginAsUser = (profile: UserProfile) => {

@@ -37,7 +37,12 @@ export async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+  const rawBase = getApiBaseUrl().replace(/\/+$/, '');
+  const baseUrl = rawBase.endsWith('/api/v1')
+    ? rawBase
+    : rawBase.endsWith('/api')
+    ? `${rawBase}/v1`
+    : `${rawBase}/api/v1`;
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${baseUrl}${cleanEndpoint}`;
 
