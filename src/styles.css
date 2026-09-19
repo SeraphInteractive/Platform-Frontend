@@ -161,30 +161,43 @@ body:not([data-theme="dark"]) {
    ======================================================== */
 .panel-reveal-left {
   opacity: 0;
-  transform: translateX(-48px);
-  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
+  transform: translateX(-56px) scale(0.985);
+  filter: blur(3px);
+  transition:
+    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
+    filter 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s;
+  will-change: transform, opacity, filter;
 }
 
 .panel-reveal-right {
   opacity: 0;
-  transform: translateX(48px);
-  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
+  transform: translateX(56px) scale(0.985);
+  filter: blur(3px);
+  transition:
+    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
+    filter 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s;
+  will-change: transform, opacity, filter;
 }
 
 .panel-reveal-fade {
   opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
+  transform: translateY(28px) scale(0.985);
+  filter: blur(3px);
+  transition:
+    opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
+    transform 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s,
+    filter 0.85s cubic-bezier(0.22, 1, 0.36, 1) 0.15s;
+  will-change: transform, opacity, filter;
 }
 
 .panel-reveal-left.is-revealed,
 .panel-reveal-right.is-revealed,
 .panel-reveal-fade.is-revealed {
   opacity: 1;
-  transform: translate(0, 0);
+  transform: translate(0, 0) scale(1);
+  filter: blur(0px);
 }
 
 [data-reduced-motion="true"] .panel-reveal-left,
@@ -192,6 +205,7 @@ body:not([data-theme="dark"]) {
 [data-reduced-motion="true"] .panel-reveal-fade {
   opacity: 1 !important;
   transform: none !important;
+  filter: none !important;
   transition: none !important;
 }
 
@@ -1405,6 +1419,7 @@ input:checked + .switch-slider:before {
   padding: 28px 32px;
   box-shadow: none;
   align-items: center;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
 }
 
 .landing-showcase-card.reverse {
@@ -1435,6 +1450,11 @@ input:checked + .switch-slider:before {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.landing-showcase-card:hover .landing-art-img {
+  transform: scale(1.025);
 }
 
 .landing-showcase-body {
