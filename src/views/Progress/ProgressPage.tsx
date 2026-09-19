@@ -32,7 +32,6 @@ export interface OrganicUpdate {
 
 const STORAGE_KEY = 'mcs_organic_progress_updates_v2';
 
-// Purge any legacy mock updates
 if (typeof window !== 'undefined') {
   try {
     localStorage.removeItem('mcs_organic_progress_updates_v1');
@@ -43,9 +42,7 @@ function getStoredUpdates(): OrganicUpdate[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -58,6 +55,8 @@ interface ProgressPageProps {
   onOpenCreateRound?: () => void;
 }
 
+const DEFAULT_CATEGORY_FILTERS = ['ALL', 'Writing', 'Pre-Vis', 'Production', 'Post-Production', 'Voting Results'];
+
 export const ProgressPage: React.FC<ProgressPageProps> = () => {
   const { user } = useAuth();
   const isHeaderVisible = useScrollDirection();
@@ -67,7 +66,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
   const [activeTag, setActiveTag] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Flattened all 17 sub-stages across all 4 phases for the pointed and subpointed slider
+  // Flattened all 17 sub-stages across all 4 phases
   const allSubStages = useMemo(() => {
     const list: Array<{
       phaseIndex: number;
@@ -112,7 +111,6 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
     return list;
   }, [pipeline.stages]);
 
-  // Calculate current active global index
   const activeGlobalIndex = useMemo(() => {
     let count = 0;
     for (let p = 0; p < pipeline.currentBigStageIndex; p++) {
@@ -121,9 +119,12 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
     return count + pipeline.currentSubStageIndex;
   }, [pipeline.currentBigStageIndex, pipeline.currentSubStageIndex, pipeline.stages]);
 
+  const [selectedMilestoneIndex, setSelectedMilestoneIndex] = useState<number>(activeGlobalIndex);
   const [hoveredMilestoneIndex, setHoveredMilestoneIndex] = useState<number | null>(null);
 
-  // Modal State for new / editing updates
+  const activeMilestone = allSubStages[selectedMilestoneIndex] || allSubStages[activeGlobalIndex] || allSubStages[0];
+
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUpdate, setEditingUpdate] = useState<OrganicUpdate | null>(null);
 
@@ -136,7 +137,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
   const [formStory, setFormStory] = useState('');
   const [formMediaUrl, setFormMediaUrl] = useState('');
 
-  // Optional results inputs
+  // Results inputs
   const [hasResults, setHasResults] = useState(false);
   const [resRoundTitle, setResRoundTitle] = useState('');
   const [resBallots, setResBallots] = useState('');
@@ -164,7 +165,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
     setFormNumber(maxNum + 1);
     setFormTitle('');
     setFormAuthorName(user?.discordUsername || 'Supervisor');
-    setFormAuthorRole(user?.role === 'admin' ? 'Production Lead' : 'Supervisor');
+    setFormAuthorRole(user?.role === 'admin' ? 'Lead' : 'Supervisor');
     setFormTag('Production');
     setFormStory('');
     setFormMediaUrl('');
@@ -230,7 +231,7 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Delete this update entry?')) {
+    if (window.confirm('Delete this update from ledger?')) {
       const filtered = updates.filter((u) => u.id !== id);
       saveUpdates(filtered);
     }
@@ -246,15 +247,9 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
     let resultsData: OrganicUpdate['roundResults'] | undefined = undefined;
     if (hasResults && resRoundTitle.trim()) {
       const placements: WinnerPlacement[] = [];
-      if (r1Title.trim()) {
-        placements.push({ rank: 1, title: r1Title.trim(), creator: r1Creator.trim() || 'Community Creator', points: Number(r1Points) || 0 });
-      }
-      if (r2Title.trim()) {
-        placements.push({ rank: 2, title: r2Title.trim(), creator: r2Creator.trim() || 'Community Creator', points: Number(r2Points) || 0 });
-      }
-      if (r3Title.trim()) {
-        placements.push({ rank: 3, title: r3Title.trim(), creator: r3Creator.trim() || 'Community Creator', points: Number(r3Points) || 0 });
-      }
+      if (r1Title.trim()) placements.push({ rank: 1, title: r1Title.trim(), creator: r1Creator.trim() || 'Community Creator', points: Number(r1Points) || 0 });
+      if (r2Title.trim()) placements.push({ rank: 2, title: r2Title.trim(), creator: r2Creator.trim() || 'Community Creator', points: Number(r2Points) || 0 });
+      if (r3Title.trim()) placements.push({ rank: 3, title: r3Title.trim(), creator: r3Creator.trim() || 'Community Creator', points: Number(r3Points) || 0 });
       resultsData = {
         roundTitle: resRoundTitle.trim(),
         totalBallots: Number(resBallots) || 0,
@@ -283,7 +278,6 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
     } else {
       updated = [newRecord, ...updates];
     }
-    // Sort descending by update number
     updated.sort((a, b) => b.updateNumber - a.updateNumber);
 
     saveUpdates(updated);
@@ -292,7 +286,10 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
 
   const filteredUpdates = useMemo(() => {
     return updates.filter((u) => {
-      const matchTag = activeTag === 'ALL' || u.tag.toLowerCase() === activeTag.toLowerCase();
+      const matchTag =
+        activeTag === 'ALL' ||
+        u.tag.toLowerCase() === activeTag.toLowerCase() ||
+        (activeTag === 'Voting Results' && !!u.roundResults);
       const q = searchQuery.toLowerCase().trim();
       const matchQuery =
         !q ||
@@ -306,113 +303,173 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
   }, [updates, activeTag, searchQuery]);
 
   const allTags = useMemo(() => {
-    const set = new Set<string>();
-    updates.forEach((u) => set.add(u.tag));
-    return ['ALL', ...Array.from(set)];
+    const set = new Set<string>(DEFAULT_CATEGORY_FILTERS);
+    updates.forEach((u) => {
+      if (u.tag) set.add(u.tag);
+    });
+    return Array.from(set);
   }, [updates]);
 
   return (
-    <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28 }}>
-      {/* Top Header Banner */}
+    <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28, paddingBottom: 64 }}>
+      {/* 1. Header Banner */}
       <div
         className={`card scroll-header-banner ${isHeaderVisible ? 'banner-visible' : 'banner-hidden'}`}
-        style={{ padding: '28px 36px', background: 'var(--bg-card)' }}
+        style={{
+          padding: '22px 30px',
+          background: 'var(--bg-card)',
+          borderRadius: '16px',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 14,
+        }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <h1 style={{ fontSize: '36px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.03em', margin: 0 }}>
-              Progress
-            </h1>
+        <h1 style={{ fontSize: '30px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', margin: 0 }}>
+          Progress
+        </h1>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: '10px',
+              background: `${pipeline.currentBigStage.color}18`,
+              border: `1px solid ${pipeline.currentBigStage.color}40`,
+              color: pipeline.currentBigStage.color,
+              fontWeight: 800,
+              fontSize: '12px',
+            }}
+          >
+            Phase {pipeline.currentBigStage.phaseNumber}: {pipeline.currentBigStage.shortName}
           </div>
 
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span
-              className="badge"
-              style={{
-                background: pipeline.currentBigStage.color,
-                color: '#ffffff',
-                fontWeight: 800,
-                fontSize: '12px',
-                padding: '6px 14px',
-              }}
-            >
-              Phase {pipeline.currentBigStage.phaseNumber}: {pipeline.currentBigStage.shortName}
-            </span>
-            <span className="badge badge-success mono" style={{ fontSize: '12px', padding: '6px 14px' }}>
-              {pipeline.percentage}% Complete
-            </span>
-            <button className="btn btn-primary btn-sm" onClick={openCreateModal} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', fontSize: '12px' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span>Post Update</span>
-            </button>
+          <div
+            className="mono"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: '10px',
+              background: 'rgba(16, 185, 129, 0.12)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: '#34d399',
+              fontWeight: 800,
+              fontSize: '12px',
+            }}
+          >
+            {pipeline.percentage}% Complete
           </div>
+
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={openCreateModal}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '7px 16px',
+              fontSize: '12px',
+              borderRadius: '10px',
+              fontWeight: 800,
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>Post Update</span>
+          </button>
         </div>
       </div>
 
-      {/* Interactive Milestone Timeline */}
-      <div className="card" style={{ padding: '36px 40px', background: 'var(--bg-card)', position: 'relative' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 28 }}>
-          <div>
-            <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-              Pipeline
-            </div>
+      {/* 2. Pipeline Roadmap */}
+      <section
+        className="card"
+        style={{
+          padding: '30px 32px',
+          background: 'var(--bg-card)',
+          borderRadius: '18px',
+          border: '1px solid rgba(255, 255, 255, 0.05)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 24,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
+            Pipeline
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="mono" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              Updated {pipeline.lastUpdated}
-            </span>
-          </div>
+          <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+            Updated {pipeline.lastUpdated}
+          </span>
         </div>
 
-        {/* Phase Color Segment Span Labels above Track */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '3fr 4fr 5fr 5fr',
-            gap: 8,
-            marginBottom: 44,
-            padding: '0 4px',
-          }}
-        >
-          {pipeline.stages.map((stage) => {
+        {/* 4 Phase Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+          {pipeline.stages.map((stage, pIdx) => {
             const isPhaseActive = stage.phaseNumber === pipeline.currentBigStage.phaseNumber;
             const isPhaseDone = stage.phaseNumber < pipeline.currentBigStage.phaseNumber;
+            const isSelected = activeMilestone.phaseIndex === pIdx;
 
             return (
               <div
                 key={stage.id}
+                onClick={() => {
+                  const firstStep = allSubStages.find((s) => s.phaseIndex === pIdx);
+                  if (firstStep) setSelectedMilestoneIndex(firstStep.globalIndex);
+                }}
                 style={{
+                  cursor: 'pointer',
+                  padding: '14px 16px',
+                  borderRadius: '12px',
+                  background: isPhaseActive
+                    ? `${stage.color}15`
+                    : isSelected
+                    ? 'var(--bg-card-hover)'
+                    : 'var(--bg-card-muted)',
+                  border: isPhaseActive
+                    ? `1px solid ${stage.color}60`
+                    : '1px solid rgba(255, 255, 255, 0.05)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 4,
-                  borderTop: `4px solid ${stage.color}`,
-                  paddingTop: 8,
-                  opacity: isPhaseActive || isPhaseDone ? 1 : 0.6,
+                  gap: 6,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 800, color: stage.color, textTransform: 'uppercase' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: stage.color, opacity: isPhaseActive || isPhaseDone ? 1 : 0.4 }} />
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                  <span style={{ fontSize: '11px', fontWeight: 900, color: stage.color, textTransform: 'uppercase' }}>
                     Phase {stage.phaseNumber}
                   </span>
                   <span
                     className="badge"
                     style={{
                       fontSize: '9px',
-                      padding: '1px 6px',
-                      background: isPhaseActive ? stage.color : isPhaseDone ? '#10b981' : 'var(--bg-card-muted)',
-                      color: isPhaseActive || isPhaseDone ? '#ffffff' : 'var(--text-muted)',
+                      padding: '2px 6px',
+                      borderRadius: '5px',
+                      fontWeight: 800,
+                      background: isPhaseActive ? stage.color : isPhaseDone ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                      color: isPhaseActive ? '#ffffff' : isPhaseDone ? '#34d399' : 'var(--text-muted)',
                     }}
                   >
                     {isPhaseActive ? 'Active' : isPhaseDone ? 'Done' : 'Upcoming'}
                   </span>
                 </div>
-                <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main)' }}>
+
+                <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
                   {stage.name}
                 </div>
+
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                   {stage.supervisors[0]}
                 </div>
@@ -421,106 +478,25 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
           })}
         </div>
 
-        {/* Numbered Milestones Slider Track */}
-        <div style={{ position: 'relative', margin: '48px 16px 40px 16px', height: 48, display: 'flex', alignItems: 'center' }}>
-          {/* Background Rail Bar */}
+        {/* 17-Milestone Slider Rail */}
+        <div style={{ position: 'relative', margin: '20px 6px 6px 6px', padding: '20px 4px 10px 4px' }}>
+          {/* Active Pin */}
           <div
             style={{
               position: 'absolute',
-              left: 0,
-              right: 0,
-              height: 8,
-              background: 'var(--bg-card-muted)',
-              borderRadius: 4,
-              zIndex: 1,
-            }}
-          />
-
-          {/* Filled Progress Bar from 0% */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              width: `${Math.max(0, Math.min(100, pipeline.percentage))}%`,
-              height: 8,
-              background: 'linear-gradient(90deg, #10b981 0%, #3b82f6 50%, #eab308 80%, #a855f7 100%)',
-              borderRadius: 4,
-              zIndex: 2,
-              transition: 'width 0.4s ease',
-            }}
-          />
-
-          {/* 17 Numbered Milestone Nodes */}
-          {allSubStages.map((sub) => {
-            const isSubDone = sub.globalIndex < activeGlobalIndex;
-            const isSubActive = sub.globalIndex === activeGlobalIndex;
-            const isHovered = hoveredMilestoneIndex === sub.globalIndex;
-            const stepNumber = sub.globalIndex + 1;
-
-            return (
-              <div
-                key={sub.id}
-                onMouseEnter={() => setHoveredMilestoneIndex(sub.globalIndex)}
-                onMouseLeave={() => setHoveredMilestoneIndex(null)}
-                onClick={() => setHoveredMilestoneIndex(hoveredMilestoneIndex === sub.globalIndex ? null : sub.globalIndex)}
-                style={{
-                  position: 'absolute',
-                  left: `${sub.pctPosition}%`,
-                  top: '50%',
-                  transform: `translate(-50%, -50%) ${isHovered ? 'scale(1.18)' : 'scale(1)'}`,
-                  width: 26,
-                  height: 26,
-                  borderRadius: '50%',
-                  background: isSubActive
-                    ? '#10b981'
-                    : isSubDone
-                    ? 'rgba(16, 185, 129, 0.22)'
-                    : isHovered
-                    ? 'var(--bg-card-muted)'
-                    : 'var(--bg-card)',
-                  color: isSubActive
-                    ? '#ffffff'
-                    : isSubDone
-                    ? '#10b981'
-                    : isHovered
-                    ? 'var(--text-main)'
-                    : 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '11px',
-                  fontWeight: 900,
-                  cursor: 'pointer',
-                  zIndex: 10,
-                  transition: 'all 0.15s ease',
-                  boxShadow: isSubActive
-                    ? '0 0 14px rgba(16, 185, 129, 0.6)'
-                    : isHovered
-                    ? `0 0 12px ${sub.phaseColor}66`
-                    : '0 2px 6px rgba(0,0,0,0.15)',
-                }}
-              >
-                {isSubDone ? 'OK' : stepNumber}
-              </div>
-            );
-          })}
-
-          {/* Active Indicator Pin */}
-          <div
-            style={{
-              position: 'absolute',
-              left: `${Math.max(0, Math.min(100, pipeline.percentage))}%`,
-              bottom: 26,
+              left: `${Math.max(2, Math.min(98, pipeline.percentage))}%`,
+              top: -6,
               transform: 'translateX(-50%)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              zIndex: 15,
+              zIndex: 20,
               pointerEvents: 'none',
               transition: 'left 0.4s ease',
             }}
           >
             <div
+              className="mono"
               style={{
                 background: '#10b981',
                 color: '#ffffff',
@@ -530,550 +506,439 @@ export const ProgressPage: React.FC<ProgressPageProps> = () => {
                 borderRadius: '5px',
                 boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                 whiteSpace: 'nowrap',
-                letterSpacing: '0.02em',
               }}
             >
               {pipeline.percentage}% ACTIVE
             </div>
-            <div
-              style={{
-                width: 0,
-                height: 0,
-                borderLeft: '5px solid transparent',
-                borderRight: '5px solid transparent',
-                borderTop: '6px solid #10b981',
-              }}
-            />
+            <div style={{ width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #10b981' }} />
           </div>
 
-          {/* Floating Hoverbox with Milestone Details */}
-          {hoveredMilestoneIndex !== null && (() => {
-            const hoveredStep = allSubStages[hoveredMilestoneIndex];
-            if (!hoveredStep) return null;
-            const isSubDone = hoveredStep.globalIndex < activeGlobalIndex;
-            const isSubActive = hoveredStep.globalIndex === activeGlobalIndex;
-            const stepNumber = hoveredStep.globalIndex + 1;
-            const leftPct = hoveredStep.pctPosition;
+          {/* Rail Track */}
+          <div
+            style={{
+              position: 'relative',
+              height: 8,
+              background: 'var(--bg-card-muted)',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: `${Math.max(0, Math.min(100, pipeline.percentage))}%`,
+                background: 'linear-gradient(90deg, #10b981 0%, #3b82f6 40%, #eab308 75%, #a855f7 100%)',
+                borderRadius: 4,
+                zIndex: 2,
+                transition: 'width 0.4s ease',
+              }}
+            />
 
+            {allSubStages.map((sub) => {
+              const isSubDone = sub.globalIndex < activeGlobalIndex;
+              const isSubActive = sub.globalIndex === activeGlobalIndex;
+              const isInspected = selectedMilestoneIndex === sub.globalIndex;
+              const isHovered = hoveredMilestoneIndex === sub.globalIndex;
+              const stepNumber = sub.globalIndex + 1;
+
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onMouseEnter={() => setHoveredMilestoneIndex(sub.globalIndex)}
+                  onMouseLeave={() => setHoveredMilestoneIndex(null)}
+                  onClick={() => setSelectedMilestoneIndex(sub.globalIndex)}
+                  title={`${stepNumber}. ${sub.name}`}
+                  style={{
+                    position: 'absolute',
+                    left: `${sub.pctPosition}%`,
+                    top: '50%',
+                    transform: `translate(-50%, -50%) ${isHovered || isInspected ? 'scale(1.2)' : 'scale(1)'}`,
+                    width: 26,
+                    height: 26,
+                    borderRadius: '50%',
+                    background: isSubActive
+                      ? '#10b981'
+                      : isSubDone
+                      ? 'rgba(16, 185, 129, 0.25)'
+                      : isInspected
+                      ? 'var(--bg-card-hover)'
+                      : 'var(--bg-card)',
+                    color: isSubActive
+                      ? '#ffffff'
+                      : isSubDone
+                      ? '#34d399'
+                      : isInspected
+                      ? 'var(--text-main)'
+                      : 'var(--text-muted)',
+                    border: isSubActive
+                      ? '2px solid #ffffff'
+                      : isInspected
+                      ? `2px solid ${sub.phaseColor}`
+                      : isSubDone
+                      ? '1px solid rgba(16, 185, 129, 0.4)'
+                      : '1px solid rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: isSubDone ? '11px' : '10px',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    zIndex: isSubActive ? 15 : 10,
+                    transition: 'all 0.15s ease',
+                    padding: 0,
+                  }}
+                >
+                  {isSubDone ? '✓' : stepNumber}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Hover Tooltip */}
+          {hoveredMilestoneIndex !== null && hoveredMilestoneIndex !== selectedMilestoneIndex && (() => {
+            const step = allSubStages[hoveredMilestoneIndex];
+            if (!step) return null;
             return (
               <div
                 style={{
                   position: 'absolute',
-                  bottom: 50,
-                  width: 340,
-                  maxWidth: 'calc(100% - 24px)',
+                  bottom: 34,
+                  left: `${step.pctPosition}%`,
+                  transform: 'translateX(-50%)',
                   background: 'var(--bg-card)',
-                  borderRadius: '12px',
-                  padding: '16px 18px',
-                  boxShadow: '0 16px 36px rgba(0, 0, 0, 0.55)',
-                  zIndex: 50,
+                  border: `1px solid ${step.phaseColor}55`,
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.5)',
+                  zIndex: 60,
                   pointerEvents: 'none',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                  ...(leftPct < 22
-                    ? { left: 0 }
-                    : leftPct > 78
-                    ? { right: 0, left: 'auto' }
-                    : { left: `${leftPct}%`, transform: 'translateX(-50%)' }),
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: '11px', fontWeight: 800, color: hoveredStep.phaseColor, textTransform: 'uppercase' }}>
-                      Phase {hoveredStep.phaseNumber}: {hoveredStep.phaseName}
-                    </span>
-                    <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      Step {stepNumber} of 17
-                    </span>
-                  </div>
-                  <span
-                    className="badge"
-                    style={{
-                      fontSize: '9px',
-                      padding: '2px 6px',
-                      background: isSubActive ? '#10b981' : isSubDone ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-card-muted)',
-                      color: isSubActive ? '#ffffff' : isSubDone ? '#10b981' : 'var(--text-muted)',
-                    }}
-                  >
-                    {isSubActive ? 'Active' : isSubDone ? 'Completed' : 'Upcoming'}
-                  </span>
+                <div style={{ fontSize: '10px', fontWeight: 800, color: step.phaseColor }}>
+                  Phase {step.phaseNumber} • Step {step.globalIndex + 1}
                 </div>
-
-                <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1.25 }}>
-                  {hoveredStep.name}
+                <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
+                  {step.name}
                 </div>
-
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                  {hoveredStep.department} | Supervisor: <strong style={{ color: 'var(--text-main)' }}>{hoveredStep.supervisor}</strong>
-                </div>
-
-                <div style={{ fontSize: '12px', color: 'var(--text-main)', lineHeight: 1.45 }}>
-                  {hoveredStep.description}
-                </div>
-
-                {hoveredStep.deliverable && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      Deliverable:
-                    </span>
-                    <span className="badge badge-engine" style={{ fontSize: '10px', padding: '2px 8px' }}>
-                      {hoveredStep.deliverable}
-                    </span>
-                  </div>
-                )}
               </div>
             );
           })()}
         </div>
 
-        {/* Footer Summary Row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, paddingTop: 16, borderTop: '1px solid var(--border-subtle)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>
-              Current Milestone:
-            </span>
-            <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)' }}>
-              Step {activeGlobalIndex + 1}: {allSubStages[activeGlobalIndex]?.name || 'Writing'}
-            </span>
+        {/* Selected Milestone Box */}
+        <div
+          style={{
+            background: 'var(--bg-card-muted)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            padding: '16px 20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span className="badge mono" style={{ fontSize: '10px', padding: '2px 7px', background: `${activeMilestone.phaseColor}20`, color: activeMilestone.phaseColor }}>
+                Step {activeMilestone.globalIndex + 1} of 17 • Phase {activeMilestone.phaseNumber}
+              </span>
+              <span style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
+                {activeMilestone.name}
+              </span>
+              {activeMilestone.deliverable && (
+                <span className="badge" style={{ fontSize: '10px', background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc' }}>
+                  {activeMilestone.deliverable}
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              {activeMilestone.department} • Supervisor: {activeMilestone.supervisor}
+            </div>
           </div>
-          <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-            Hover over numbered milestones for details
-          </span>
-        </div>
-      </div>
 
-      {/* Production Ledger Section Header */}
-      <div>
-        <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-          Ledger
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          {allTags.map((tag) => (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button
-              key={tag}
-              onClick={() => setActiveTag(tag)}
-              className={`btn btn-sm ${activeTag === tag ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ fontSize: '11px', padding: '5px 12px' }}
+              className="btn btn-secondary btn-sm"
+              disabled={activeMilestone.globalIndex === 0}
+              onClick={() => setSelectedMilestoneIndex(Math.max(0, activeMilestone.globalIndex - 1))}
+              style={{ fontSize: '11px', padding: '4px 10px' }}
             >
-              {tag}
+              ← Prev
             </button>
-          ))}
+            <button
+              className="btn btn-secondary btn-sm"
+              disabled={activeMilestone.globalIndex === allSubStages.length - 1}
+              onClick={() => setSelectedMilestoneIndex(Math.min(allSubStages.length - 1, activeMilestone.globalIndex + 1))}
+              style={{ fontSize: '11px', padding: '4px 10px' }}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Ledger Section */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', margin: 0 }}>
+              Ledger
+            </h2>
+            <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-card-muted)', padding: '2px 7px', borderRadius: '5px' }}>
+              {filteredUpdates.length}
+            </span>
+          </div>
         </div>
 
-        <input
-          type="text"
-          placeholder="Search updates..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="input"
-          style={{ maxWidth: 260, fontSize: '12px', padding: '6px 12px' }}
-        />
-      </div>
-
-      {/* Numbered Organic Updates Stream */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {filteredUpdates.length === 0 ? (
-          <div className="card" style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>
-            {updates.length === 0 ? 'No production updates recorded yet in ledger.' : 'No updates found matching your search.'}
+        {/* Filter & Search Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {allTags.map((tag) => {
+              const isSelected = activeTag.toLowerCase() === tag.toLowerCase();
+              return (
+                <button
+                  key={tag}
+                  onClick={() => setActiveTag(tag)}
+                  className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: '11px', padding: '5px 12px', borderRadius: '7px' }}
+                >
+                  {tag}
+                </button>
+              );
+            })}
           </div>
-        ) : (
-          filteredUpdates.map((upd) => (
-            <article
-              key={upd.id}
+
+          <div style={{ position: 'relative', width: '100%', maxWidth: 240, display: 'flex', alignItems: 'center' }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ position: 'absolute', left: 10, color: 'var(--text-muted)', pointerEvents: 'none' }}>
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search updates..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="input"
+              style={{ paddingLeft: 32, paddingRight: 10, fontSize: '12px', height: 34, borderRadius: '7px' }}
+            />
+          </div>
+        </div>
+
+        {/* Updates List / Empty State */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {filteredUpdates.length === 0 ? (
+            <div
               className="card"
               style={{
-                padding: '32px 36px',
+                padding: '48px 24px',
+                textAlign: 'center',
                 background: 'var(--bg-card)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 18,
+                borderRadius: '14px',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                color: 'var(--text-muted)',
+                fontSize: '13px',
               }}
             >
-              {/* Header Row: Update Number, Tag, Author & Actions */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span
-                    className="mono"
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 900,
-                      background: 'rgba(34, 197, 94, 0.12)',
-                      color: 'var(--accent-green)',
-                      padding: '4px 10px',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(34, 197, 94, 0.3)',
-                    }}
-                  >
-                    Update #{String(upd.updateNumber).padStart(2, '0')}
-                  </span>
-
-                  <span className="badge badge-engine">
-                    {upd.tag}
-                  </span>
-                </div>
-
-                {/* Supervisor Author Bio */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              {updates.length === 0 ? 'No production updates recorded yet in ledger.' : 'No updates matching search.'}
+            </div>
+          ) : (
+            filteredUpdates.map((upd) => (
+              <article
+                key={upd.id}
+                className="card"
+                style={{
+                  padding: '24px 28px',
+                  background: 'var(--bg-card)',
+                  borderRadius: '14px',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 14,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <img
-                      src={upd.authorAvatar || 'https://cdn.discordapp.com/embed/avatars/1.png'}
-                      alt={upd.authorName}
-                      style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }}
-                    />
-                    <div>
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
-                        {upd.authorName}
-                      </div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                        {upd.authorRole} • {upd.date}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions for supervisors */}
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      style={{ padding: '2px 8px', fontSize: '10px' }}
-                      onClick={() => openEditModal(upd)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      style={{ padding: '2px 8px', fontSize: '10px', color: 'var(--color-danger)' }}
-                      onClick={() => handleDelete(upd.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Title */}
-              <h2 style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.01em', margin: 0 }}>
-                {upd.title}
-              </h2>
-
-              {/* Story Narrative */}
-              <div style={{ fontSize: '14px', lineHeight: 1.7, color: 'var(--text-main)' }}>
-                {upd.story}
-              </div>
-
-              {/* Attached Media Preview */}
-              {upd.mediaUrl && (
-                <div
-                  style={{
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    background: '#000000',
-                    maxHeight: 400,
-                  }}
-                >
-                  <img
-                    src={upd.mediaUrl}
-                    alt={upd.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                </div>
-              )}
-
-              {/* Attached Round Voting Results */}
-              {upd.roundResults && (
-                <div
-                  style={{
-                    background: 'var(--bg-card-muted)',
-                    borderRadius: '12px',
-                    padding: '20px 24px',
-                    marginTop: 4,
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <div>
-                      <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase' }}>
-                        Consensus Standings
-                      </div>
-                      <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
-                        {upd.roundResults.roundTitle}
-                      </div>
-                    </div>
-                    <span className="badge badge-success">
-                      {upd.roundResults.totalPoints} Conserved Points
+                    <span className="mono" style={{ fontSize: '11px', fontWeight: 900, background: 'rgba(16, 185, 129, 0.12)', color: '#34d399', padding: '3px 8px', borderRadius: '5px' }}>
+                      #{String(upd.updateNumber).padStart(2, '0')}
+                    </span>
+                    <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', fontSize: '10px' }}>
+                      {upd.tag}
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {upd.roundResults.placements.map((p) => (
-                      <div
-                        key={p.rank}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          padding: '8px 14px',
-                          borderRadius: '8px',
-                          background: 'var(--bg-card)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span
-                            className="mono"
-                            style={{
-                              fontSize: '12px',
-                              fontWeight: 900,
-                              color: p.rank === 1 ? 'var(--accent-gold)' : p.rank === 2 ? 'var(--accent-silver)' : 'var(--accent-bronze)',
-                            }}
-                          >
-                            #{p.rank}
-                          </span>
-                          <span style={{ fontWeight: 800, color: 'var(--text-main)' }}>
-                            {p.title}
-                          </span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                            by {p.creator}
-                          </span>
-                        </div>
-                        <span className="mono" style={{ fontWeight: 800, color: 'var(--accent-green)', fontSize: '13px' }}>
-                          {p.points} pts
-                        </span>
-                      </div>
-                    ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      <strong style={{ color: 'var(--text-main)' }}>{upd.authorName}</strong> ({upd.authorRole}) • {upd.date}
+                    </div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="btn btn-secondary btn-sm" style={{ padding: '2px 7px', fontSize: '10px' }} onClick={() => openEditModal(upd)}>
+                        Edit
+                      </button>
+                      <button className="btn btn-secondary btn-sm" style={{ padding: '2px 7px', fontSize: '10px', color: 'var(--color-danger)' }} onClick={() => handleDelete(upd.id)}>
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
-              )}
-            </article>
-          ))
-        )}
-      </div>
 
-      {/* Post / Edit Update Modal */}
+                <h3 style={{ fontSize: '18px', fontWeight: 900, color: 'var(--text-main)', margin: 0 }}>
+                  {upd.title}
+                </h3>
+
+                <div style={{ fontSize: '13px', lineHeight: 1.7, color: 'var(--text-main)', opacity: 0.95, whiteSpace: 'pre-line' }}>
+                  {upd.story}
+                </div>
+
+                {upd.mediaUrl && (
+                  <div style={{ borderRadius: '10px', overflow: 'hidden', background: '#000000', maxHeight: 380 }}>
+                    <img src={upd.mediaUrl} alt={upd.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  </div>
+                )}
+
+                {upd.roundResults && (
+                  <div style={{ background: 'var(--bg-card-muted)', borderRadius: '10px', padding: '14px 18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 900, color: 'var(--text-main)' }}>
+                        {upd.roundResults.roundTitle} (Results)
+                      </div>
+                      <span className="mono" style={{ fontSize: '11px', color: '#34d399', fontWeight: 800 }}>
+                        {upd.roundResults.totalPoints} pts
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {upd.roundResults.placements.map((p) => (
+                        <div key={p.rank} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: '6px', background: 'var(--bg-card)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '12px' }}>
+                            <span className="mono" style={{ fontWeight: 900, color: p.rank === 1 ? '#f59e0b' : p.rank === 2 ? '#94a3b8' : '#d97706' }}>
+                              #{p.rank}
+                            </span>
+                            <span style={{ fontWeight: 800, color: 'var(--text-main)' }}>{p.title}</span>
+                            <span style={{ color: 'var(--text-muted)' }}>by {p.creator}</span>
+                          </div>
+                          <span className="mono" style={{ fontWeight: 800, color: '#34d399', fontSize: '12px' }}>
+                            {p.points} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* 4. Post / Edit Modal */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="card-header" style={{ marginBottom: 16 }}>
-              <div>
-                <div className="card-title">{editingUpdate ? 'Edit Update' : 'Post Numbered Update'}</div>
-                <div className="card-desc">Share progress, behind-the-scenes notes, and voting results.</div>
+          <div
+            className="modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: 600,
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              background: 'var(--bg-card)',
+              borderRadius: '16px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              padding: '24px',
+            }}
+          >
+            <div className="card-header" style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="card-title" style={{ fontSize: '18px', fontWeight: 900 }}>
+                {editingUpdate ? 'Edit Update' : 'Post Update'}
               </div>
-              <button className="btn btn-secondary btn-sm" onClick={() => setIsModalOpen(false)}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+              <button className="btn btn-secondary btn-sm" onClick={() => setIsModalOpen(false)} style={{ padding: '4px 8px' }}>
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 12 }}>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 10 }}>
                 <div>
-                  <label className="label">Update #</label>
-                  <input
-                    type="number"
-                    value={formNumber}
-                    onChange={(e) => setFormNumber(Number(e.target.value))}
-                    className="input"
-                    required
-                  />
+                  <label className="label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>#</label>
+                  <input type="number" value={formNumber} onChange={(e) => setFormNumber(Number(e.target.value))} className="input" required />
                 </div>
                 <div>
-                  <label className="label">Headline Title</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Cave Renders & Audio Stems"
-                    value={formTitle}
-                    onChange={(e) => setFormTitle(e.target.value)}
-                    className="input"
-                    required
-                  />
+                  <label className="label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Title</label>
+                  <input type="text" placeholder="Headline" value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="input" required />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
                 <div>
-                  <label className="label">Author Name</label>
-                  <input
-                    type="text"
-                    value={formAuthorName}
-                    onChange={(e) => setFormAuthorName(e.target.value)}
-                    className="input"
-                    required
-                  />
+                  <label className="label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Author</label>
+                  <input type="text" value={formAuthorName} onChange={(e) => setFormAuthorName(e.target.value)} className="input" required />
                 </div>
                 <div>
-                  <label className="label">Author Role</label>
-                  <input
-                    type="text"
-                    value={formAuthorRole}
-                    onChange={(e) => setFormAuthorRole(e.target.value)}
-                    className="input"
-                    required
-                  />
+                  <label className="label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Role</label>
+                  <input type="text" value={formAuthorRole} onChange={(e) => setFormAuthorRole(e.target.value)} className="input" required />
                 </div>
                 <div>
-                  <label className="label">Tag</label>
-                  <input
-                    type="text"
-                    value={formTag}
-                    onChange={(e) => setFormTag(e.target.value)}
-                    className="input"
-                    required
-                  />
+                  <label className="label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Tag</label>
+                  <input type="text" value={formTag} onChange={(e) => setFormTag(e.target.value)} className="input" required />
                 </div>
               </div>
 
               <div>
-                <label className="label">Devlog Narrative</label>
-                <textarea
-                  rows={5}
-                  placeholder="Describe recent breakthroughs, test renders, sound mixes, and studio notes..."
-                  value={formStory}
-                  onChange={(e) => setFormStory(e.target.value)}
-                  className="textarea"
-                  required
-                />
+                <label className="label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Story</label>
+                <textarea rows={4} placeholder="Describe recent production updates..." value={formStory} onChange={(e) => setFormStory(e.target.value)} className="textarea" required />
               </div>
 
               <div>
-                <label className="label">Media Image / Render URL (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="/images/stock_01.jpg"
-                  value={formMediaUrl}
-                  onChange={(e) => setFormMediaUrl(e.target.value)}
-                  className="input"
-                />
+                <label className="label" style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Media Image URL (Optional)</label>
+                <input type="text" placeholder="/images/scaffold/artstation_cover.jpg" value={formMediaUrl} onChange={(e) => setFormMediaUrl(e.target.value)} className="input" />
               </div>
 
-              {/* Checkbox to attach Voting Results */}
-              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '13px', fontWeight: 700 }}>
-                  <input
-                    type="checkbox"
-                    checked={hasResults}
-                    onChange={(e) => setHasResults(e.target.checked)}
-                  />
+              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: 10 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: 'var(--text-main)' }}>
+                  <input type="checkbox" checked={hasResults} onChange={(e) => setHasResults(e.target.checked)} />
                   <span>Attach Voting Round Winners</span>
                 </label>
 
                 {hasResults && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, padding: 14, background: 'var(--bg-card-muted)', borderRadius: 8 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10 }}>
-                      <div>
-                        <label className="label">Round Title</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Scene Concept Round"
-                          value={resRoundTitle}
-                          onChange={(e) => setResRoundTitle(e.target.value)}
-                          className="input"
-                        />
-                      </div>
-                      <div>
-                        <label className="label">Ballots</label>
-                        <input
-                          type="number"
-                          value={resBallots}
-                          onChange={(e) => setResBallots(e.target.value)}
-                          className="input"
-                        />
-                      </div>
-                      <div>
-                        <label className="label">Points</label>
-                        <input
-                          type="number"
-                          value={resPoints}
-                          onChange={(e) => setResPoints(e.target.value)}
-                          className="input"
-                        />
-                      </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10, padding: 12, background: 'var(--bg-card-muted)', borderRadius: 8 }}>
+                    <input type="text" placeholder="Round Title" value={resRoundTitle} onChange={(e) => setResRoundTitle(e.target.value)} className="input" />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                      <input type="number" placeholder="Ballots" value={resBallots} onChange={(e) => setResBallots(e.target.value)} className="input" />
+                      <input type="number" placeholder="Points" value={resPoints} onChange={(e) => setResPoints(e.target.value)} className="input" />
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: 8 }}>
-                      <input
-                        type="text"
-                        placeholder="1st Place Title"
-                        value={r1Title}
-                        onChange={(e) => setR1Title(e.target.value)}
-                        className="input"
-                      />
-                      <input
-                        type="text"
-                        placeholder="1st Creator"
-                        value={r1Creator}
-                        onChange={(e) => setR1Creator(e.target.value)}
-                        className="input"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Pts"
-                        value={r1Points}
-                        onChange={(e) => setR1Points(e.target.value)}
-                        className="input"
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 6 }}>
+                      <input type="text" placeholder="1st Title" value={r1Title} onChange={(e) => setR1Title(e.target.value)} className="input" />
+                      <input type="text" placeholder="1st Creator" value={r1Creator} onChange={(e) => setR1Creator(e.target.value)} className="input" />
+                      <input type="number" placeholder="Pts" value={r1Points} onChange={(e) => setR1Points(e.target.value)} className="input" />
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: 8 }}>
-                      <input
-                        type="text"
-                        placeholder="2nd Place Title"
-                        value={r2Title}
-                        onChange={(e) => setR2Title(e.target.value)}
-                        className="input"
-                      />
-                      <input
-                        type="text"
-                        placeholder="2nd Creator"
-                        value={r2Creator}
-                        onChange={(e) => setR2Creator(e.target.value)}
-                        className="input"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Pts"
-                        value={r2Points}
-                        onChange={(e) => setR2Points(e.target.value)}
-                        className="input"
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 6 }}>
+                      <input type="text" placeholder="2nd Title" value={r2Title} onChange={(e) => setR2Title(e.target.value)} className="input" />
+                      <input type="text" placeholder="2nd Creator" value={r2Creator} onChange={(e) => setR2Creator(e.target.value)} className="input" />
+                      <input type="number" placeholder="Pts" value={r2Points} onChange={(e) => setR2Points(e.target.value)} className="input" />
                     </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: 8 }}>
-                      <input
-                        type="text"
-                        placeholder="3rd Place Title"
-                        value={r3Title}
-                        onChange={(e) => setR3Title(e.target.value)}
-                        className="input"
-                      />
-                      <input
-                        type="text"
-                        placeholder="3rd Creator"
-                        value={r3Creator}
-                        onChange={(e) => setR3Creator(e.target.value)}
-                        className="input"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Pts"
-                        value={r3Points}
-                        onChange={(e) => setR3Points(e.target.value)}
-                        className="input"
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 80px', gap: 6 }}>
+                      <input type="text" placeholder="3rd Title" value={r3Title} onChange={(e) => setR3Title(e.target.value)} className="input" />
+                      <input type="text" placeholder="3rd Creator" value={r3Creator} onChange={(e) => setR3Creator(e.target.value)} className="input" />
+                      <input type="number" placeholder="Pts" value={r3Points} onChange={(e) => setR3Points(e.target.value)} className="input" />
                     </div>
                   </div>
                 )}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setIsModalOpen(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingUpdate ? 'Save Changes' : 'Publish Update'}
+                <button type="submit" className="btn btn-primary btn-sm">
+                  {editingUpdate ? 'Save' : 'Publish'}
                 </button>
               </div>
             </form>

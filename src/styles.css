@@ -1302,6 +1302,15 @@ input:checked + .switch-slider:before {
   overflow: hidden;
 }
 
+#hero-yt-player,
+#hero-yt-player iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  pointer-events: none !important;
+  display: block;
+}
+
 /* Floater Overlay */
 .landing-hero-content {
   display: flex;
@@ -2187,7 +2196,10 @@ html {
   margin-bottom: 14px;
 }
 
+.input,
 .input-field,
+.textarea,
+textarea,
 .select,
 .select-field,
 select {
@@ -2197,24 +2209,52 @@ select {
   font-size: 13px;
   color: var(--text-main);
   background: var(--bg-card-muted);
-  border: none;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   outline: none;
   transition: all 0.15s ease;
 }
 
+.input::placeholder,
+.input-field::placeholder,
+.textarea::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.input:focus,
 .input-field:focus,
+.textarea:focus,
+textarea:focus,
 .select:focus,
 .select-field:focus,
 select:focus {
   background: var(--bg-card);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
 }
 
+[data-theme="dark"] .input,
+[data-theme="dark"] .input-field,
+[data-theme="dark"] .textarea,
+[data-theme="dark"] textarea,
+[data-theme="dark"] .select,
+[data-theme="dark"] .select-field,
+[data-theme="dark"] select {
+  background: #0b1120;
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .input:focus,
 [data-theme="dark"] .input-field:focus,
+[data-theme="dark"] .textarea:focus,
+[data-theme="dark"] textarea:focus,
 [data-theme="dark"] .select:focus,
 [data-theme="dark"] .select-field:focus,
 [data-theme="dark"] select:focus {
+  background: #0f172a;
+  border-color: rgba(59, 130, 246, 0.6);
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
 }
 

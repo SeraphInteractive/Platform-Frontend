@@ -6,6 +6,7 @@ import { DocsSectionId } from '../Docs/DocsPage.tsx';
 import { TrackShowcase } from './TrackShowcase.tsx';
 import { Footer } from '../../components/Footer.tsx';
 import { useScrollReveal } from '../../hooks/useScrollReveal.ts';
+import { HeroVideoBackground } from './HeroVideoBackground.tsx';
 
 interface LandingPageProps {
   activeRound?: VotingRound;
@@ -40,14 +41,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           backgroundImage: `linear-gradient(180deg, rgba(6, 9, 19, 0.42) 0%, rgba(6, 9, 19, 0.88) 100%), url('/images/scaffold/artstation_cover.jpg')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center 35%',
-          minHeight: 400,
+          minHeight: 420,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'center',
           padding: '48px 24px',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.4)',
         }}
       >
+        {/* Background YouTube Video Loop (0s to 43s, muted) */}
+        <HeroVideoBackground videoId="VyZKYhM0Kv4" start={0} end={43} />
+
         <div
           style={{
             position: 'relative',
@@ -74,17 +80,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             Project Stairway
           </h1>
 
-          <p
+          <div
+            className="font-minecraft"
             style={{
-              fontSize: '14px',
-              color: '#e2e8f0',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: 'rgba(255, 255, 255, 0.85)',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
               margin: 0,
-              maxWidth: 540,
-              lineHeight: 1.5,
             }}
           >
-            Community-driven cinematic production with consensus voting.
-          </p>
+            COMMUNITY MINECRAFT MOVIE
+          </div>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
             <button
