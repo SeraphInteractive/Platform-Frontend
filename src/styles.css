@@ -2934,6 +2934,9 @@ select:focus {
 @media (max-width: 1024px) {
   .vote-layout-grid {
     grid-template-columns: 1fr;
+    overflow: visible;
+    height: auto;
+    min-height: auto;
   }
 }
 
@@ -4885,18 +4888,69 @@ select:focus {
     height: auto !important;
     min-height: 100% !important;
     overflow: visible !important;
-    padding-bottom: calc(88px + env(safe-area-inset-bottom, 24px)) !important;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 32px)) !important;
   }
 
   .tab-content-ballot {
     height: auto !important;
     overflow: visible !important;
-    padding-bottom: calc(88px + env(safe-area-inset-bottom, 24px)) !important;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 32px)) !important;
+  }
+
+  .vote-layout-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 20px !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    width: 100% !important;
+  }
+
+  .pool-drop-zone {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    flex: none !important;
+    width: 100% !important;
+  }
+
+  .slot-roller-container {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    width: 100% !important;
   }
 
   .drop-slots-column {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: auto !important;
+    flex: none !important;
+    gap: 14px !important;
+    width: 100% !important;
     margin-bottom: 24px !important;
-    padding-bottom: 24px !important;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 32px)) !important;
+  }
+
+  .slot-drop-target {
+    min-height: 96px !important;
+    max-height: none !important;
+    height: auto !important;
+    flex: none !important;
+    padding: 14px 16px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .slot-drop-target.slot-3 {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 96px !important;
   }
 
   .progress-timeline-track {
