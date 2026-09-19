@@ -83,7 +83,7 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
         <div className="podium-container">
           {/* 2nd Place Silver */}
           {top2 && (
-            <div className="podium-card" style={{ order: 1 }}>
+            <div className="podium-card podium-place-2">
               <div style={{ marginBottom: 12 }}>
                 <span className="slot-badge slot-rank-2">2ND PLACE</span>
                 <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-main)', marginTop: 8 }}>
@@ -115,7 +115,7 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
 
           {/* 1st Place Gold */}
           {top1 && (
-            <div className="podium-card" style={{ order: 2 }}>
+            <div className="podium-card podium-place-1">
               <div style={{ marginBottom: 12 }}>
                 <span className="slot-badge slot-rank-1">1ST PLACE LEADER</span>
                 <div style={{ fontWeight: 900, fontSize: '17px', color: 'var(--text-main)', marginTop: 8 }}>
@@ -147,7 +147,7 @@ export const PublicLeaderboard: React.FC<PublicLeaderboardProps> = ({
 
           {/* 3rd Place Bronze */}
           {top3 && (
-            <div className="podium-card" style={{ order: 3 }}>
+            <div className="podium-card podium-place-3">
               <div style={{ marginBottom: 12 }}>
                 <span className="slot-badge slot-rank-3">3RD PLACE</span>
                 <div style={{ fontWeight: 800, fontSize: '15px', color: 'var(--text-main)', marginTop: 8 }}>

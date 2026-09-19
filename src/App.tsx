@@ -8,6 +8,7 @@ import { CreatePitchModal } from './components/CreatePitchModal.tsx';
 import { CreateRoundModal } from './components/CreateRoundModal.tsx';
 import { BlazeTransitionOverlay, type BlazeTransitionRef } from './components/BlazeTransitionOverlay.tsx';
 import { SkeletonCard } from './components/Skeleton.tsx';
+import { DevViewportSimulator } from './components/DevViewportSimulator.tsx';
 import { LandingPage } from './views/Landing/LandingPage.tsx';
 import { VotePage } from './views/VoterApp/VotePage.tsx';
 import { PublicLeaderboard } from './views/VoterApp/PublicLeaderboard.tsx';
@@ -431,7 +432,9 @@ export const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <SettingsProvider>
-          <MainDashboardLayout />
+          <DevViewportSimulator>
+            <MainDashboardLayout />
+          </DevViewportSimulator>
         </SettingsProvider>
       </AuthProvider>
     </QueryClientProvider>

@@ -5,7 +5,19 @@ import { apiRequest, getApiBaseUrl } from '../api/client.ts';
 export type UserRole = 'user' | 'moderator' | 'admin' | 'supervisor';
 
 export function isStaff(role?: string): boolean {
-  return role === 'admin' || role === 'moderator' || role === 'supervisor';
+  return role === 'admin' || role === 'moderator' || role === 'supervisor' || (role ? role.startsWith('supervisor') : false);
+}
+
+export function isAdmin(role?: string): boolean {
+  return role === 'admin';
+}
+
+export function isSupervisor(role?: string): boolean {
+  return role === 'supervisor' || (role ? role.startsWith('supervisor') : false);
+}
+
+export function isModerator(role?: string): boolean {
+  return role === 'moderator';
 }
 
 /**

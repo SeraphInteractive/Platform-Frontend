@@ -11,7 +11,7 @@ import {
   useDeleteRound,
   VotingEntry,
 } from '../../hooks/useVotingApi.ts';
-import { useAuth, isStaff } from '../../context/AuthContext.tsx';
+import { useAuth, isStaff, isAdmin, isSupervisor, isModerator } from '../../context/AuthContext.tsx';
 import {
   analyze_raid_risk,
   aggregate_scores,
@@ -85,7 +85,13 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
   const deleteEntryMutation = useDeleteEntry(currentRoundId);
   const deleteRoundMutation = useDeleteRound();
 
+  const canElevateAdmin = isAdmin(user?.role) || isSupervisor(user?.role);
+
   const handleDeleteRound = async (roundId: string) => {
+    if (!canElevateAdmin) {
+      alert('Administrator or Supervisor permissions are required to delete voting rounds.');
+      return;
+    }
     const roundToDelete = rounds.find((r) => r.id === roundId);
     const roundTitle = roundToDelete?.title || roundId;
     if (!window.confirm(`Are you sure you want to delete "${roundTitle}" and all its proposals?`)) {
@@ -155,6 +161,10 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
   };
 
   const handleDeleteEntry = async (entryId: string) => {
+    if (!canElevateAdmin) {
+      alert('Administrator or Supervisor permissions are required to delete proposals.');
+      return;
+    }
     if (!confirm(`Delete proposal ${entryId}? This action is immediate.`)) return;
     try {
       await deleteEntryMutation.mutateAsync(entryId);
@@ -269,8 +279,21 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
           </button>
         </div>
 
-        <span className="badge badge-engine">
-          {(user?.role || 'supervisor').toUpperCase()} MODE
+        <span
+          className={`badge ${
+            isAdmin(user?.role)
+              ? 'badge-danger'
+              : isModerator(user?.role)
+              ? 'badge-warning'
+              : 'badge-engine'
+          }`}
+          style={{ fontWeight: 800 }}
+        >
+          {isAdmin(user?.role)
+            ? 'ADMINISTRATOR MODE'
+            : isModerator(user?.role)
+            ? 'MODERATOR MODE'
+            : 'SUPERVISOR MODE'}
         </span>
       </div>
 
@@ -306,15 +329,22 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
               {rounds.length > 0 && (
                 <button
                   className="btn btn-secondary btn-sm"
-                  style={{ color: '#ef4444', fontSize: '11px', padding: '5px 10px' }}
+                  style={{
+                    color: canElevateAdmin ? '#ef4444' : 'var(--text-muted)',
+                    fontSize: '11px',
+                    padding: '5px 10px',
+                    opacity: canElevateAdmin ? 1 : 0.5,
+                    cursor: canElevateAdmin ? 'pointer' : 'not-allowed',
+                  }}
+                  disabled={!canElevateAdmin}
                   onClick={() => handleDeleteRound(currentRoundId)}
-                  title="Delete this round and its proposals"
+                  title={canElevateAdmin ? 'Delete this round and its proposals' : 'Administrator access required to delete rounds'}
                 >
                   Delete Round
                 </button>
               )}
 
-              {onOpenCreateRound && (
+              {onOpenCreateRound && canElevateAdmin && (
                 <button className="btn btn-secondary btn-sm" onClick={onOpenCreateRound}>
                   + New Round
                 </button>
@@ -508,14 +538,16 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                                     </button>
                                   )}
 
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    style={{ fontSize: '11px', padding: '3px 8px', color: 'var(--text-muted)' }}
-                                    onClick={() => handleDeleteEntry(entry.id)}
-                                    title="Delete Proposal"
-                                  >
-                                    &times;
-                                  </button>
+                                  {canElevateAdmin && (
+                                    <button
+                                      className="btn btn-secondary btn-sm"
+                                      style={{ fontSize: '11px', padding: '3px 8px', color: '#ef4444' }}
+                                      onClick={() => handleDeleteEntry(entry.id)}
+                                      title="Delete Proposal (Administrator/Supervisor)"
+                                    >
+                                      &times;
+                                    </button>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -847,13 +879,15 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14 }}>
-              <button
-                className="btn btn-secondary btn-sm"
-                style={{ color: '#ef4444' }}
-                onClick={() => handleDeleteEntry(inspectedEntry.id)}
-              >
-                Delete Proposal
-              </button>
+              {canElevateAdmin ? (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ color: '#ef4444' }}
+                  onClick={() => handleDeleteEntry(inspectedEntry.id)}
+                >
+                  Delete Proposal
+                </button>
+              ) : <div />}
 
               <div style={{ display: 'flex', gap: 8 }}>
                 {inspectedEntry.status !== 'approved' && (

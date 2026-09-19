@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth, HARDCODED_ADMIN_DISCORD_IDS, getDiscordAvatar } from '../../context/AuthContext.tsx';
+import { useAuth, HARDCODED_ADMIN_DISCORD_IDS, getDiscordAvatar, isAdmin, isSupervisor } from '../../context/AuthContext.tsx';
 import { apiRequest } from '../../api/client.ts';
 
 export interface DatabaseUser {
@@ -134,6 +134,8 @@ export const RolesManagementView: React.FC = () => {
   const [newRoleDescription, setNewRoleDescription] = useState<string>('');
 
   const [hoveredRoleId, setHoveredRoleId] = useState<string | null>(null);
+
+  const canManageRoles = isAdmin(user?.role) || isSupervisor(user?.role) || (user?.discordId ? HARDCODED_ADMIN_DISCORD_IDS.has(user.discordId) : false);
 
   // Combined Roles List (System + Mutable Custom)
   const allRoles = useMemo(() => {
@@ -307,20 +309,28 @@ export const RolesManagementView: React.FC = () => {
               <span>Refresh Users</span>
             </button>
 
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => setIsCreateRoleOpen(true)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span>Add Custom Role</span>
-            </button>
+            {canManageRoles && (
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => setIsCreateRoleOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                <span>Add Custom Role</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {!canManageRoles && (
+        <div style={{ padding: '12px 16px', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 'var(--radius-sm)', color: '#f59e0b', fontSize: '13px', fontWeight: 700 }}>
+          Moderator Read-Only Mode: Viewing staff and community members. Administrator privileges are required to modify user roles or create custom departments.
+        </div>
+      )}
 
       {notice && (
         <div style={{ padding: '12px 16px', background: 'rgba(16, 185, 129, 0.15)', borderRadius: 'var(--radius-sm)', color: 'var(--text-main)', fontSize: '13px', fontWeight: 700 }}>
@@ -365,17 +375,23 @@ export const RolesManagementView: React.FC = () => {
                 </div>
 
                 {!role.isBuiltIn ? (
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    style={{ padding: '2px 6px', fontSize: '10px', color: '#ef4444' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCustomRole(role.id);
-                    }}
-                    title="Delete custom role"
-                  >
-                    Delete
-                  </button>
+                  canManageRoles ? (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ padding: '2px 6px', fontSize: '10px', color: '#ef4444' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCustomRole(role.id);
+                      }}
+                      title="Delete custom role"
+                    >
+                      Delete
+                    </button>
+                  ) : (
+                    <span className="badge badge-light" style={{ fontSize: '9px', padding: '2px 6px' }}>
+                      CUSTOM
+                    </span>
+                  )
                 ) : (
                   <span className="badge badge-light" style={{ fontSize: '9px', padding: '2px 6px' }}>
                     {role.category.toUpperCase()}
