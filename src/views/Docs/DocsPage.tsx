@@ -1,25 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { NavTabId } from '../../components/Navbar.tsx';
-import { useScrollDirection } from '../../hooks/useScrollDirection.ts';
 import { Footer } from '../../components/Footer.tsx';
 
 export type DocsSectionId =
   | 'overview'
+  | 'governance'
   | 'voting'
+  | 'mathematics'
+  | 'security'
   | 'tracks'
+  | 'story-track'
+  | 'art-track'
+  | 'builds-track'
+  | 'audio-track'
+  | 'animation-track'
   | 'pipeline'
+  | 'phase-1'
+  | 'phase-2'
+  | 'phase-3'
+  | 'phase-4'
   | 'grabbox'
   | 'roles'
+  | 'supervision'
   | 'guidelines'
   | 'teams'
   | 'terminology'
   | 'architecture'
   | 'references'
-  | 'mathematics'
-  | 'supervision'
-  | 'security'
   | 'discipline'
-  | 'legal';
+  | 'legal'
+  | 'see-also'
+  | 'external-links';
 
 interface DocsPageProps {
   initialSection?: DocsSectionId;
@@ -31,8 +42,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
   initialSection = 'overview',
   onNavigateTab,
 }) => {
-  const isHeaderVisible = useScrollDirection();
-  const [activeSection, setActiveSection] = useState<DocsSectionId>(initialSection);
+  const [activeTab, setActiveTab] = useState<'article' | 'talk'>('article');
   const [showToc, setShowToc] = useState(true);
 
   const resolveTargetId = (id: string): string => {
@@ -41,13 +51,12 @@ export const DocsPage: React.FC<DocsPageProps> = ({
       case 'terminology':
         return 'tracks';
       case 'architecture':
-      case 'references':
         return 'overview';
       case 'mathematics':
-        return 'voting';
+      case 'security':
+        return 'governance';
       case 'supervision':
         return 'roles';
-      case 'security':
       case 'discipline':
       case 'legal':
         return 'guidelines';
@@ -58,7 +67,6 @@ export const DocsPage: React.FC<DocsPageProps> = ({
 
   const scrollToSection = (id: string) => {
     const targetId = resolveTargetId(id);
-    setActiveSection(targetId as DocsSectionId);
     const element = document.getElementById(targetId);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -68,7 +76,6 @@ export const DocsPage: React.FC<DocsPageProps> = ({
   useEffect(() => {
     if (initialSection) {
       const targetId = resolveTargetId(initialSection);
-      setActiveSection(targetId as DocsSectionId);
       const timer = setTimeout(() => {
         const element = document.getElementById(targetId);
         if (element) {
@@ -79,358 +86,653 @@ export const DocsPage: React.FC<DocsPageProps> = ({
     }
   }, [initialSection]);
 
-  const tocItems: { id: DocsSectionId; title: string }[] = [
-    { id: 'overview', title: '1. Overview' },
-    { id: 'voting', title: '2. How Voting Works' },
-    { id: 'tracks', title: '3. Creative Tracks' },
-    { id: 'pipeline', title: '4. Production Pipeline' },
-    { id: 'grabbox', title: '5. GrabBox Tasks' },
-    { id: 'roles', title: '6. Roles & Teams' },
-    { id: 'guidelines', title: '7. Guidelines & Safety' },
-  ];
-
   return (
-    <div style={{ width: '100%', maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 28, paddingBottom: 64 }}>
-      {/* Top Header Banner */}
-      <div
-        className={`card scroll-header-banner ${isHeaderVisible ? 'banner-visible' : 'banner-hidden'}`}
-        style={{
-          padding: '22px 30px',
-          background: 'var(--bg-card)',
-          borderRadius: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: '28px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.02em', margin: 0 }}>
-            Documentation
-          </h1>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
-            Everything you need to know about voting, pitches, pipeline, and creating shots.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={() => onNavigateTab?.('ballot')}
-            style={{ fontSize: '12px', padding: '6px 14px' }}
-          >
-            Explore Proposals
-          </button>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => onNavigateTab?.('progress')}
-            style={{ fontSize: '12px', padding: '6px 14px' }}
-          >
-            View Pipeline
-          </button>
-        </div>
-      </div>
-
-      {/* Main Documentation Body */}
-      <div
-        className="card"
-        style={{
-          padding: '36px 40px',
-          background: 'var(--bg-card)',
-          borderRadius: '18px',
-          border: '1px solid rgba(255, 255, 255, 0.05)',
-          color: 'var(--text-main)',
-          fontSize: '14px',
-          lineHeight: 1.7,
-        }}
-      >
-        {/* Table of Contents */}
-        <div
-          style={{
-            background: 'var(--bg-card-muted)',
-            borderRadius: '12px',
-            border: '1px solid rgba(255, 255, 255, 0.05)',
-            padding: '16px 20px',
-            marginBottom: 36,
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showToc ? 10 : 0 }}>
-            <span style={{ fontSize: '13px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
-              Quick Navigation
-            </span>
+    <div className="wiki-container" style={{ paddingBottom: 64 }}>
+      {/* Main Wikipedia Article Container */}
+      <div className="wiki-article-card">
+        {/* Top Wikipedia Actions and Tab Navigation */}
+        <div className="wiki-top-bar">
+          <div className="wiki-tabs-left">
             <button
-              onClick={() => setShowToc(!showToc)}
-              style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '11px', cursor: 'pointer', fontWeight: 700 }}
+              className={`wiki-tab ${activeTab === 'article' ? 'active' : ''}`}
+              onClick={() => setActiveTab('article')}
             >
-              [{showToc ? 'Hide' : 'Show'}]
+              Article
+            </button>
+            <button
+              className={`wiki-tab ${activeTab === 'talk' ? 'active' : ''}`}
+              onClick={() => setActiveTab('talk')}
+            >
+              Talk
+            </button>
+          </div>
+
+          <div className="wiki-tabs-right">
+            <span className="wiki-tab active">Read</span>
+            <button
+              className="wiki-tab"
+              onClick={() => onNavigateTab?.('ballot')}
+            >
+              View source
+            </button>
+            <button
+              className="wiki-tab"
+              onClick={() => onNavigateTab?.('progress')}
+            >
+              View history
+            </button>
+          </div>
+        </div>
+
+        {/* Article Title and Hatnote */}
+        <div className="wiki-title-header">
+          <h1 className="wiki-page-title">Project Stairway (film)</h1>
+          <p className="wiki-page-subtitle">From StairwayPedia, the open community encyclopedia</p>
+        </div>
+
+        <div className="wiki-hatnote">
+          This article is about the open-source community animated feature film. For the platform governance mechanism, see <a href="#governance" onClick={(e) => { e.preventDefault(); scrollToSection('governance'); }} className="wiki-link">Ranked Borda voting</a>. For the task management system, see <a href="#grabbox" onClick={(e) => { e.preventDefault(); scrollToSection('grabbox'); }} className="wiki-link">GrabBox</a>.
+        </div>
+
+        {/* Article Notice Box */}
+        <div className="wiki-notice-box">
+          <div>
+            <strong>Current production:</strong> This article documents an active film production. Information regarding milestones, cast, and technical deliverables may be updated frequently as community voting rounds conclude.
+          </div>
+        </div>
+
+        {/* Wikipedia Infobox */}
+        <aside className="wiki-infobox">
+          <div className="wiki-infobox-title">Project Stairway</div>
+          <div className="wiki-infobox-subtitle">Open-Source Community Animated Feature</div>
+
+          <div className="wiki-infobox-image-wrapper">
+            <div style={{ padding: '24px 12px', background: 'rgba(0,0,0,0.3)', color: 'var(--text-muted)', fontSize: '12px' }}>
+              <div style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: 4 }}>PROJECT STAIRWAY</div>
+              <div>Official Community Key Visual</div>
+            </div>
+            <div className="wiki-infobox-caption">
+              Promotional artwork for the open community animated film.
+            </div>
+          </div>
+
+          <table className="wiki-infobox-table">
+            <tbody>
+              <tr>
+                <th>Directed by</th>
+                <td>Community Consensus, Department Supervisors</td>
+              </tr>
+              <tr>
+                <th>Written by</th>
+                <td>Open Community Submissions</td>
+              </tr>
+              <tr>
+                <th>Produced by</th>
+                <td>Seraph Interactive, Community Balloteers</td>
+              </tr>
+              <tr>
+                <th>Production model</th>
+                <td>Decentralized Democratic Consensus</td>
+              </tr>
+              <tr>
+                <th>Voting mechanism</th>
+                <td>3-2-1 Ranked Borda Count</td>
+              </tr>
+              <tr>
+                <th>Creative tracks</th>
+                <td>5 (Story, Art, Builds, Audio, Animation)</td>
+              </tr>
+              <tr>
+                <th>Production phases</th>
+                <td>4 (17 sequential milestones)</td>
+              </tr>
+              <tr>
+                <th>Primary software</th>
+                <td>Blender, Minecraft Java Edition, Blockbench</td>
+              </tr>
+              <tr>
+                <th>Asset distribution</th>
+                <td>GrabBox Task Ingestion</td>
+              </tr>
+              <tr>
+                <th>License</th>
+                <td>Creative Commons CC-BY-SA 4.0</td>
+              </tr>
+              <tr>
+                <th>Status</th>
+                <td>Active Production (Pre-Vis and Layout)</td>
+              </tr>
+              <tr>
+                <th>Official portal</th>
+                <td><a href="#overview" className="wiki-link">Platform Portal</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </aside>
+
+        {/* Lead Section */}
+        <p>
+          <strong>Project Stairway</strong> is an open-source, computer-animated feature film produced by <strong>Seraph Interactive</strong> and directed through direct community consensus<sup className="wiki-citation"><a href="#ref-1">[1]</a></sup>. Unlike traditional animation studio productions that rely on top-down executive hierarchies, <em>Project Stairway</em> allows independent creators and community members to submit creative pitches, vote on canonical story developments, construct voxel world sets, provide character voice recordings, and animate individual scene shots<sup className="wiki-citation"><a href="#ref-2">[2]</a></sup>.
+        </p>
+
+        <p>
+          The production is coordinated using a specialized governance platform that utilizes a 3-2-1 ranked Borda voting mechanism to resolve creative proposals across five dedicated production tracks<sup className="wiki-citation"><a href="#ref-3">[3]</a></sup>. Production deliverables are managed and distributed via the GrabBox asset ingestion pipeline, where independent animators claim shot packages with time-bound leases<sup className="wiki-citation"><a href="#ref-4">[4]</a></sup>. The film is rendered primarily in Blender utilizing environments and assets constructed in Minecraft Java Edition and Blockbench<sup className="wiki-citation"><a href="#ref-5">[5]</a></sup>.
+        </p>
+
+        {/* Table of Contents */}
+        <div className="wiki-toc">
+          <div className="wiki-toc-title">
+            <span>Contents</span>
+            <button className="wiki-toc-toggle" onClick={() => setShowToc(!showToc)}>
+              [{showToc ? 'hide' : 'show'}]
             </button>
           </div>
 
           {showToc && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
-              {tocItems.map((item) => (
-                <a
-                  key={item.id}
-                  href={`#${item.id}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scrollToSection(item.id);
-                  }}
-                  style={{
-                    color: activeSection === item.id ? '#34d399' : 'var(--text-main)',
-                    fontWeight: activeSection === item.id ? 800 : 500,
-                    textDecoration: 'none',
-                    fontSize: '13px',
-                    padding: '4px 6px',
-                    borderRadius: '6px',
-                    background: activeSection === item.id ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                    transition: 'all 0.12s ease',
-                  }}
-                >
-                  {item.title}
+            <ul className="wiki-toc-list">
+              <li>
+                <span className="wiki-toc-number">1</span>
+                <a href="#overview" onClick={(e) => { e.preventDefault(); scrollToSection('overview'); }} className="wiki-toc-link">
+                  Overview and production philosophy
                 </a>
-              ))}
-            </div>
+              </li>
+              <li>
+                <span className="wiki-toc-number">2</span>
+                <a href="#governance" onClick={(e) => { e.preventDefault(); scrollToSection('governance'); }} className="wiki-toc-link">
+                  Governance and voting mechanism
+                </a>
+                <ul className="toc-sublist">
+                  <li>
+                    <span className="wiki-toc-number">2.1</span>
+                    <a href="#voting" onClick={(e) => { e.preventDefault(); scrollToSection('voting'); }} className="wiki-toc-link">
+                      3-2-1 Ranked Borda count
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">2.2</span>
+                    <a href="#mathematics" onClick={(e) => { e.preventDefault(); scrollToSection('mathematics'); }} className="wiki-toc-link">
+                      Mathematical point conservation
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">2.3</span>
+                    <a href="#security" onClick={(e) => { e.preventDefault(); scrollToSection('security'); }} className="wiki-toc-link">
+                      Sybil resistance and voter integrity
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <span className="wiki-toc-number">3</span>
+                <a href="#tracks" onClick={(e) => { e.preventDefault(); scrollToSection('tracks'); }} className="wiki-toc-link">
+                  Creative tracks and departments
+                </a>
+                <ul className="toc-sublist">
+                  <li>
+                    <span className="wiki-toc-number">3.1</span>
+                    <a href="#story-track" onClick={(e) => { e.preventDefault(); scrollToSection('story-track'); }} className="wiki-toc-link">
+                      Story and Narrative
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">3.2</span>
+                    <a href="#art-track" onClick={(e) => { e.preventDefault(); scrollToSection('art-track'); }} className="wiki-toc-link">
+                      Art Style and Visual Direction
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">3.3</span>
+                    <a href="#builds-track" onClick={(e) => { e.preventDefault(); scrollToSection('builds-track'); }} className="wiki-toc-link">
+                      Builds and World Sets
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">3.4</span>
+                    <a href="#audio-track" onClick={(e) => { e.preventDefault(); scrollToSection('audio-track'); }} className="wiki-toc-link">
+                      Voice Casting and Audio Engineering
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">3.5</span>
+                    <a href="#animation-track" onClick={(e) => { e.preventDefault(); scrollToSection('animation-track'); }} className="wiki-toc-link">
+                      Animation and Scene Staging
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <span className="wiki-toc-number">4</span>
+                <a href="#pipeline" onClick={(e) => { e.preventDefault(); scrollToSection('pipeline'); }} className="wiki-toc-link">
+                  Production pipeline and milestones
+                </a>
+                <ul className="toc-sublist">
+                  <li>
+                    <span className="wiki-toc-number">4.1</span>
+                    <a href="#phase-1" onClick={(e) => { e.preventDefault(); scrollToSection('phase-1'); }} className="wiki-toc-link">
+                      Phase 1: Writing and Screenplay
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">4.2</span>
+                    <a href="#phase-2" onClick={(e) => { e.preventDefault(); scrollToSection('phase-2'); }} className="wiki-toc-link">
+                      Phase 2: Pre-Visualization and Animatics
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">4.3</span>
+                    <a href="#phase-3" onClick={(e) => { e.preventDefault(); scrollToSection('phase-3'); }} className="wiki-toc-link">
+                      Phase 3: Production and Rendering
+                    </a>
+                  </li>
+                  <li>
+                    <span className="wiki-toc-number">4.4</span>
+                    <a href="#phase-4" onClick={(e) => { e.preventDefault(); scrollToSection('phase-4'); }} className="wiki-toc-link">
+                      Phase 4: Post-Production and Mastering
+                    </a>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <span className="wiki-toc-number">5</span>
+                <a href="#grabbox" onClick={(e) => { e.preventDefault(); scrollToSection('grabbox'); }} className="wiki-toc-link">
+                  GrabBox distributed task system
+                </a>
+              </li>
+              <li>
+                <span className="wiki-toc-number">6</span>
+                <a href="#roles" onClick={(e) => { e.preventDefault(); scrollToSection('roles'); }} className="wiki-toc-link">
+                  Roles and organizational structure
+                </a>
+              </li>
+              <li>
+                <span className="wiki-toc-number">7</span>
+                <a href="#guidelines" onClick={(e) => { e.preventDefault(); scrollToSection('guidelines'); }} className="wiki-toc-link">
+                  Community guidelines and content policy
+                </a>
+              </li>
+              <li>
+                <span className="wiki-toc-number">8</span>
+                <a href="#see-also" onClick={(e) => { e.preventDefault(); scrollToSection('see-also'); }} className="wiki-toc-link">
+                  See also
+                </a>
+              </li>
+              <li>
+                <span className="wiki-toc-number">9</span>
+                <a href="#references" onClick={(e) => { e.preventDefault(); scrollToSection('references'); }} className="wiki-toc-link">
+                  References and notes
+                </a>
+              </li>
+              <li>
+                <span className="wiki-toc-number">10</span>
+                <a href="#external-links" onClick={(e) => { e.preventDefault(); scrollToSection('external-links'); }} className="wiki-toc-link">
+                  External links
+                </a>
+              </li>
+            </ul>
           )}
         </div>
 
         {/* Section 1: Overview */}
-        <section id="overview" style={{ marginBottom: 44 }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: 8, marginBottom: 14 }}>
-            1. Overview
+        <section id="overview">
+          <h2 className="wiki-heading-2">
+            <span>1 Overview and production philosophy</span>
+            <a href="#overview" className="wiki-edit-link">[edit]</a>
           </h2>
-          <p style={{ margin: '0 0 12px 0' }}>
-            <strong>Project Stairway</strong> is a community-directed Minecraft animated movie. Instead of decisions being made behind closed doors, anyone in the community can pitch story ideas, vote on the best concepts, build sets, voice characters, and animate shots.
+          <p>
+            The production methodology of <em>Project Stairway</em> is founded on the principle of open participation and decentralized creative consensus. In traditional animated feature production, executive producers and studio committees make unilateral decisions regarding script revisions, casting choices, and aesthetic styles. <em>Project Stairway</em> replaces this centralized structure with public proposal cycles and weighted preference balloting<sup className="wiki-citation"><a href="#ref-1">[1]</a></sup>.
           </p>
-          <p style={{ margin: '0 0 16px 0' }}>
-            The project operates through three core parts:
+          <p>
+            The project operates under an open collaboration framework where creative assets, including 3D rigs, texture packages, environment maps, and musical cues, are published to community repositories under Creative Commons licenses. This enables contributors worldwide to participate in animation shot completion, set staging, and sound design without proprietary access restrictions<sup className="wiki-citation"><a href="#ref-6">[6]</a></sup>.
           </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, margin: '16px 0' }}>
-            <div style={{ background: 'var(--bg-card-muted)', padding: '16px 18px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-              <div style={{ fontSize: '15px', fontWeight: 900, color: '#34d399', marginBottom: 4 }}>🗳️ Community Voting</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                Ranked voting rounds where the community chooses favorite plotlines, visual looks, and voice auditions.
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--bg-card-muted)', padding: '16px 18px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-              <div style={{ fontSize: '15px', fontWeight: 900, color: '#60a5fa', marginBottom: 4 }}>🎬 4-Phase Pipeline</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                A structured 17-step roadmap from initial script draft to final render and sound mix.
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--bg-card-muted)', padding: '16px 18px', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.04)' }}>
-              <div style={{ fontSize: '15px', fontWeight: 900, color: '#f59e0b', marginBottom: 4 }}>📦 GrabBox Tasks</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                Open scene tasks where animators and builders claim shots, work on them, and submit their deliverables.
-              </div>
-            </div>
-          </div>
         </section>
 
-        {/* Section 2: How Voting Works */}
-        <section id="voting" style={{ marginBottom: 44 }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: 8, marginBottom: 14 }}>
-            2. How Voting Works
+        {/* Section 2: Governance & Voting */}
+        <section id="governance">
+          <h2 className="wiki-heading-2">
+            <span>2 Governance and voting mechanism</span>
+            <a href="#governance" className="wiki-edit-link">[edit]</a>
           </h2>
-          <p style={{ margin: '0 0 12px 0' }}>
-            Voting uses a simple <strong>3-2-1 Ranked Ballot</strong>. When a voting round is live, you select your top 3 favorite submissions:
+          <p>
+            Decision-making within <em>Project Stairway</em> is conducted through periodic voting rounds. When a creative milestone opens for community input, verified users submit proposals ranging from screenplay treatments to musical themes. Once the submission window closes, a formal balloting period begins.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, margin: '14px 0 20px 0' }}>
-            <div style={{ background: 'var(--bg-card-muted)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: '20px' }}>🥇</span>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 900, color: '#f59e0b' }}>1st Place</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Awarded <strong>3 Points</strong></div>
-              </div>
-            </div>
+          <h3 id="voting" className="wiki-heading-3">
+            <span>2.1 3-2-1 Ranked Borda count</span>
+            <a href="#voting" className="wiki-edit-link">[edit]</a>
+          </h3>
+          <p>
+            The platform utilizes a modified Borda count system designated as the 3-2-1 Ranked Ballot. Each participating voter evaluates all eligible proposals within a track and designates their top three preferences in ordinal rank:
+          </p>
 
-            <div style={{ background: 'var(--bg-card-muted)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(148, 163, 184, 0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: '20px' }}>🥈</span>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 900, color: '#94a3b8' }}>2nd Place</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Awarded <strong>2 Points</strong></div>
-              </div>
-            </div>
+          <table className="wikitable">
+            <thead>
+              <tr>
+                <th>Preference Rank</th>
+                <th>Point Value</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>First Preference</strong></td>
+                <td>3 points</td>
+                <td>Assigned to the voter's primary choice.</td>
+              </tr>
+              <tr>
+                <td><strong>Second Preference</strong></td>
+                <td>2 points</td>
+                <td>Assigned to the voter's secondary choice.</td>
+              </tr>
+              <tr>
+                <td><strong>Third Preference</strong></td>
+                <td>1 point</td>
+                <td>Assigned to the voter's tertiary choice.</td>
+              </tr>
+            </tbody>
+          </table>
 
-            <div style={{ background: 'var(--bg-card-muted)', padding: '12px 16px', borderRadius: '10px', border: '1px solid rgba(217, 119, 6, 0.25)', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: '20px' }}>🥉</span>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 900, color: '#d97706' }}>3rd Place</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Awarded <strong>1 Point</strong></div>
-              </div>
-            </div>
+          <p>
+            The cumulative score <em>S<sub>i</sub></em> for any candidate proposal <em>i</em> across <em>N</em> submitted ballots is calculated as:
+          </p>
+
+          <div className="wiki-math-box" style={{ padding: '16px 20px', textAlign: 'center', fontSize: '15px' }}>
+            <span style={{ fontStyle: 'italic', fontFamily: 'Cambria Math, Latin Modern Math, Times New Roman, serif' }}>
+              S<sub>i</sub> = <span style={{ fontSize: '20px', verticalAlign: '-2px' }}>∑</span><sub>j=1</sub><sup>N</sup> ( 3 · <strong>1</strong>(r<sub>j,i</sub> = 1) + 2 · <strong>1</strong>(r<sub>j,i</sub> = 2) + 1 · <strong>1</strong>(r<sub>j,i</sub> = 3) )
+            </span>
           </div>
 
-          <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '12px', padding: '16px 20px', marginBottom: 14 }}>
-            <div style={{ fontSize: '14px', fontWeight: 800, color: '#34d399', marginBottom: 4 }}>
-              💡 Exact Points Conservation (6 Points per Ballot)
-            </div>
-            <div style={{ fontSize: '13px', color: 'var(--text-main)', opacity: 0.9 }}>
-              Every valid ballot assigns exactly 3 + 2 + 1 = <strong>6 points</strong> into the voting pool. For example, if 100 people vote in a round, exactly 600 total points are distributed among the proposals. This guarantees fair results and ensures no vote is lost or inflated.
-            </div>
+          <p>
+            where <em>r<sub>j,i</sub></em> denotes the rank assigned to proposal <em>i</em> by voter <em>j</em>, and <strong>1</strong>(·) is the indicator function evaluating to 1 when the condition is satisfied and 0 otherwise.
+          </p>
+
+          <h3 id="mathematics" className="wiki-heading-3">
+            <span>2.2 Mathematical point conservation</span>
+            <a href="#mathematics" className="wiki-edit-link">[edit]</a>
+          </h3>
+          <p>
+            A foundational mathematical property of the voting mechanism is exact point conservation. Every valid ballot assigns an invariant sum of six points into the proposal pool:
+          </p>
+
+          <div className="wiki-math-box" style={{ padding: '16px 20px', textAlign: 'center', fontSize: '15px' }}>
+            <span style={{ fontStyle: 'italic', fontFamily: 'Cambria Math, Latin Modern Math, Times New Roman, serif' }}>
+              <span style={{ fontSize: '20px', verticalAlign: '-2px' }}>∑</span><sub>i=1</sub><sup>M</sup> Points(r<sub>j,i</sub>) = 3 + 2 + 1 = 6 &nbsp;&nbsp;&nbsp; ∀ j ∈ {'{'}1, 2, ..., N{'}'}
+            </span>
           </div>
 
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
-            Automated fairness checks also ensure proposals with broad community appeal are ranked accurately and protect the leaderboard from vote manipulation.
+          <p>
+            Summing across all <em>M</em> candidate proposals in an election with <em>N</em> valid ballots yields the total pool conservation theorem:
+          </p>
+
+          <div className="wiki-math-box" style={{ padding: '16px 20px', textAlign: 'center', fontSize: '16px' }}>
+            <span style={{ fontStyle: 'italic', fontFamily: 'Cambria Math, Latin Modern Math, Times New Roman, serif' }}>
+              <span style={{ fontSize: '22px', verticalAlign: '-2px' }}>∑</span><sub>i=1</sub><sup>M</sup> S<sub>i</sub> = 6 · N<sub>valid</sub>
+            </span>
+          </div>
+
+          <p>
+            Because the point contribution per ballot is mathematically bounded, individual voters cannot inflate or dilute the total voting pool beyond their allocated quota. This prevents strategic bullet-voting distortions and guarantees systemic balance across all voting cycles<sup className="wiki-citation"><a href="#ref-3">[3]</a></sup>.
+          </p>
+
+          <h3 id="security" className="wiki-heading-3">
+            <span>2.3 Sybil resistance and voter integrity</span>
+            <a href="#security" className="wiki-edit-link">[edit]</a>
+          </h3>
+          <p>
+            To prevent Sybil attacks and automated vote manipulation, the platform enforces identity verification through Discord OAuth2 integration, IP rate limiting, and minimum account age thresholds. Ballots exhibiting coordinated bot activity or anomalous voting clusters are flagged by automated integrity checks and disqualified prior to final tally certification<sup className="wiki-citation"><a href="#ref-7">[7]</a></sup>.
           </p>
         </section>
 
         {/* Section 3: Creative Tracks */}
-        <section id="tracks" style={{ marginBottom: 44 }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: 8, marginBottom: 14 }}>
-            3. Creative Tracks
+        <section id="tracks">
+          <h2 className="wiki-heading-2">
+            <span>3 Creative tracks and departments</span>
+            <a href="#tracks" className="wiki-edit-link">[edit]</a>
           </h2>
-          <p style={{ margin: '0 0 14px 0' }}>
-            The film is organized into 5 production tracks. You can submit pitches and vote in any track:
+          <p>
+            Production activities and proposal submissions are categorized into five distinct creative tracks. Each track is overseen by designated department supervisors who verify asset compatibility and review deliverables.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ background: 'var(--bg-card-muted)', padding: '14px 18px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>📜 Story & Narrative</strong>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Plot outlines, scene dialogue, character motivations, and world lore.</div>
-              </div>
-              <span className="badge" style={{ fontSize: '10px', background: 'rgba(148, 163, 184, 0.15)', color: '#94a3b8' }}>Story Lead</span>
-            </div>
+          <h3 id="story-track" className="wiki-heading-3">
+            <span>3.1 Story and Narrative</span>
+            <a href="#story-track" className="wiki-edit-link">[edit]</a>
+          </h3>
+          <p>
+            The Story track encompasses character biographies, world lore, scene dialogues, plot treatments, and screenplay drafts. Community writers collaborate on screenplay revisions through open feedback cycles before final scripts undergo consensus voting.
+          </p>
 
-            <div style={{ background: 'var(--bg-card-muted)', padding: '14px 18px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>🎨 Art Style & Visuals</strong>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Color palettes, visual aesthetics, lighting tests, and concept art.</div>
-              </div>
-              <span className="badge" style={{ fontSize: '10px', background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>Art Lead</span>
-            </div>
+          <h3 id="art-track" className="wiki-heading-3">
+            <span>3.2 Art Style and Visual Direction</span>
+            <a href="#art-track" className="wiki-edit-link">[edit]</a>
+          </h3>
+          <p>
+            The Art track defines the visual language of the film, including concept art, color scripts, atmospheric lighting studies, and texture palettes. It ensures stylistic consistency between character models, set shaders, and visual effects.
+          </p>
 
-            <div style={{ background: 'var(--bg-card-muted)', padding: '14px 18px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>🧱 Builds & World Sets</strong>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Minecraft builds, structures, and environment blockouts used as 3D sets.</div>
-              </div>
-              <span className="badge" style={{ fontSize: '10px', background: 'rgba(234, 179, 8, 0.15)', color: '#facc15' }}>Art Lead</span>
-            </div>
+          <h3 id="builds-track" className="wiki-heading-3">
+            <span>3.3 Builds and World Sets</span>
+            <a href="#builds-track" className="wiki-edit-link">[edit]</a>
+          </h3>
+          <p>
+            The Builds track is responsible for constructing 3D environments within Minecraft Java Edition. Completed structures and terrain blockouts are exported using schematic tools (.schem) and converted into optimized 3D geometry for set dressing in Blender.
+          </p>
 
-            <div style={{ background: 'var(--bg-card-muted)', padding: '14px 18px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>🎙️ Voice Casting & Audio</strong>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Character voice auditions, lines, sound design (SFX), and musical score.</div>
-              </div>
-              <span className="badge" style={{ fontSize: '10px', background: 'rgba(249, 115, 22, 0.15)', color: '#fb923c' }}>Audio Lead</span>
-            </div>
+          <h3 id="audio-track" className="wiki-heading-3">
+            <span>3.4 Voice Casting and Audio Engineering</span>
+            <a href="#audio-track" className="wiki-edit-link">[edit]</a>
+          </h3>
+          <p>
+            The Audio track manages voice actor auditions, dialogue cleanup, foley sound effects, ambient audioscapes, and orchestral score composition. Voice auditions are reviewed publicly and voted on by the community.
+          </p>
 
-            <div style={{ background: 'var(--bg-card-muted)', padding: '14px 18px', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>🎬 Animation & Staging</strong>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>3D character animation, scene timing, camera framing, and rendering.</div>
-              </div>
-              <span className="badge" style={{ fontSize: '10px', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc' }}>Animation Lead</span>
-            </div>
-          </div>
+          <h3 id="animation-track" className="wiki-heading-3">
+            <span>3.5 Animation and Scene Staging</span>
+            <a href="#animation-track" className="wiki-edit-link">[edit]</a>
+          </h3>
+          <p>
+            The Animation track handles character rigging, layout staging, keyframe character animation, camera choreography, and final frame rendering. Animators utilize standardized Blender character rigs to maintain consistent motion quality across scenes.
+          </p>
         </section>
 
         {/* Section 4: Production Pipeline */}
-        <section id="pipeline" style={{ marginBottom: 44 }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: 8, marginBottom: 14 }}>
-            4. Production Pipeline
+        <section id="pipeline">
+          <h2 className="wiki-heading-2">
+            <span>4 Production pipeline and milestones</span>
+            <a href="#pipeline" className="wiki-edit-link">[edit]</a>
           </h2>
-          <p style={{ margin: '0 0 14px 0' }}>
-            The production progresses sequentially through 4 main phases:
+          <p>
+            The production roadmap is organized into four sequential phases encompassing seventeen structured milestones<sup className="wiki-citation"><a href="#ref-2">[2]</a></sup>:
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            <div style={{ background: 'var(--bg-card-muted)', padding: '16px', borderRadius: '12px', borderTop: '3px solid #94a3b8' }}>
-              <div style={{ fontSize: '11px', fontWeight: 900, color: '#94a3b8', textTransform: 'uppercase' }}>Phase 1</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)', margin: '4px 0' }}>Writing</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Community feedback, story treatments, and table-read final screenplay.
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--bg-card-muted)', padding: '16px', borderRadius: '12px', borderTop: '3px solid #3b82f6' }}>
-              <div style={{ fontSize: '11px', fontWeight: 900, color: '#3b82f6', textTransform: 'uppercase' }}>Phase 2</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)', margin: '4px 0' }}>Pre-Vis</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Asset blueprints, storyboards, voice recordings, and 2D animatics.
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--bg-card-muted)', padding: '16px', borderRadius: '12px', borderTop: '3px solid #eab308' }}>
-              <div style={{ fontSize: '11px', fontWeight: 900, color: '#eab308', textTransform: 'uppercase' }}>Phase 3</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)', margin: '4px 0' }}>Production</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                3D models, character rigging, layout blocking, animation, and GPU frame rendering.
-              </div>
-            </div>
-
-            <div style={{ background: 'var(--bg-card-muted)', padding: '16px', borderRadius: '12px', borderTop: '3px solid #a855f7' }}>
-              <div style={{ fontSize: '11px', fontWeight: 900, color: '#a855f7', textTransform: 'uppercase' }}>Phase 4</div>
-              <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--text-main)', margin: '4px 0' }}>Post-Production</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                Visual effects (VFX), sound effects, original soundtrack, color grading, and final movie master.
-              </div>
-            </div>
-          </div>
+          <table className="wikitable">
+            <thead>
+              <tr>
+                <th>Phase</th>
+                <th>Milestones Included</th>
+                <th>Key Deliverables</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="phase-1">
+                <td><strong>Phase 1: Writing</strong></td>
+                <td>Milestones 1 to 4</td>
+                <td>Premise brainstorm, plot treatments, screenplay drafts, and table read sign-off.</td>
+                <td>Completed</td>
+              </tr>
+              <tr id="phase-2">
+                <td><strong>Phase 2: Pre-Vis</strong></td>
+                <td>Milestones 5 to 8</td>
+                <td>Concept visual keys, set schematics, voice actor recordings, and 2D/3D animatics.</td>
+                <td>In Progress</td>
+              </tr>
+              <tr id="phase-3">
+                <td><strong>Phase 3: Production</strong></td>
+                <td>Milestones 9 to 13</td>
+                <td>Character rigging, world set import, layout blocking, animation, and GPU rendering.</td>
+                <td>Scheduled</td>
+              </tr>
+              <tr id="phase-4">
+                <td><strong>Phase 4: Post-Production</strong></td>
+                <td>Milestones 14 to 17</td>
+                <td>Visual effects (VFX), foley sound design, original score (OST), and final master delivery.</td>
+                <td>Scheduled</td>
+              </tr>
+            </tbody>
+          </table>
         </section>
 
-        {/* Section 5: GrabBox Tasks */}
-        <section id="grabbox" style={{ marginBottom: 44 }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: 8, marginBottom: 14 }}>
-            5. GrabBox Tasks
+        {/* Section 5: GrabBox */}
+        <section id="grabbox">
+          <h2 className="wiki-heading-2">
+            <span>5 GrabBox distributed task system</span>
+            <a href="#grabbox" className="wiki-edit-link">[edit]</a>
           </h2>
-          <p style={{ margin: '0 0 12px 0' }}>
-            <strong>GrabBox</strong> is our open task board where animators and artists can claim specific shots and contribute directly to the film:
+          <p>
+            <strong>GrabBox</strong> is the decentralized task queue used to coordinate scene animation, asset modeling, and sound mixing among distributed contributors<sup className="wiki-citation"><a href="#ref-4">[4]</a></sup>.
           </p>
-
-          <ol style={{ paddingLeft: 20, fontSize: '13px', lineHeight: 1.8, margin: '0 0 16px 0' }}>
-            <li><strong>Find an Open Shot:</strong> Browse available scene tasks filtered by difficulty (Easy, Medium, Hard, Climax).</li>
-            <li><strong>Claim & Download:</strong> Claiming a task gives you a lease timer (24h to 120h) and provides project files, camera angles, and voice stems.</li>
-            <li><strong>Submit Deliverable:</strong> Upload your finished render or blend file before the timer expires. Supervisors review your work, and once approved, it gets baked into the film!</li>
+          <p>
+            The system operates through three primary stages:
+          </p>
+          <ol style={{ paddingLeft: 24, margin: '12px 0' }}>
+            <li>
+              <strong>Task Acquisition:</strong> Contributors select open shot packages from the GrabBox board. Tasks are categorized by difficulty level (Easy, Medium, Hard, Climax). Upon claiming a task, the contributor receives a time-limited lease ranging from 24 to 120 hours.
+            </li>
+            <li>
+              <strong>Deliverable Packaging:</strong> The contributor downloads the scene package, which includes camera angles, audio stems, and character rigs. Completed deliverables are uploaded in standardized file formats (.blend files, PNG frame sequences, or lossless WAV audio).
+            </li>
+            <li>
+              <strong>Supervisory Review:</strong> Department supervisors review the submission against quality standards. Approved deliverables are merged directly into the master production timeline, while deliverables requiring adjustments receive revision notes.
+            </li>
           </ol>
         </section>
 
-        {/* Section 6: Roles & Teams */}
-        <section id="roles" style={{ marginBottom: 44 }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: 8, marginBottom: 14 }}>
-            6. Roles & Teams
+        {/* Section 6: Roles */}
+        <section id="roles">
+          <h2 className="wiki-heading-2">
+            <span>6 Roles and organizational structure</span>
+            <a href="#roles" className="wiki-edit-link">[edit]</a>
           </h2>
-          <ul style={{ paddingLeft: 20, fontSize: '13px', lineHeight: 1.8, margin: 0 }}>
-            <li><strong>Directors & Leads:</strong> Oversee production timelines, technical integrity, and milestone sign-offs.</li>
-            <li><strong>Department Supervisors:</strong> Story, Art, Animation, Audio, and Post-Production leads who review community pitches and approve deliverables.</li>
-            <li><strong>Contributors:</strong> Community animators, builders, writers, modelers, voice actors, and musicians creating content.</li>
-            <li><strong>Community Voters:</strong> Everyone who votes on pitches and helps shape the story.</li>
+          <p>
+            Participation in <em>Project Stairway</em> is stratified into four functional roles:
+          </p>
+          <ul style={{ paddingLeft: 24, margin: '12px 0' }}>
+            <li>
+              <strong>Creative Directors:</strong> Project stewards responsible for overall production scheduling, cross-department coordination, and milestone sign-offs.
+            </li>
+            <li>
+              <strong>Track Supervisors:</strong> Experienced department leads in story, art, voxel modeling, audio engineering, and animation who review community pitches and validate GrabBox submissions.
+            </li>
+            <li>
+              <strong>Community Contributors:</strong> Animators, 3D artists, voice actors, writers, and musicians who create content, submit proposals, and complete scene tasks.
+            </li>
+            <li>
+              <strong>Community Balloteers:</strong> Registered community members who vote in periodic consensus rounds to determine film canon and select proposals.
+            </li>
           </ul>
         </section>
 
         {/* Section 7: Guidelines & Safety */}
         <section id="guidelines">
-          <h2 style={{ fontSize: '22px', fontWeight: 900, color: 'var(--text-main)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: 8, marginBottom: 14 }}>
-            7. Guidelines & Safety
+          <h2 className="wiki-heading-2">
+            <span>7 Community guidelines and content policy</span>
+            <a href="#guidelines" className="wiki-edit-link">[edit]</a>
           </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-            <div style={{ background: 'var(--bg-card-muted)', padding: '14px 16px', borderRadius: '10px' }}>
-              <div style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: 4 }}>Original Work</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Only submit assets and ideas that you created or have rights to share.</div>
-            </div>
-
-            <div style={{ background: 'var(--bg-card-muted)', padding: '14px 16px', borderRadius: '10px' }}>
-              <div style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: 4 }}>Respectful Collaboration</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Keep feedback constructive, welcoming, and focused on making a great movie together.</div>
-            </div>
-
-            <div style={{ background: 'var(--bg-card-muted)', padding: '14px 16px', borderRadius: '10px' }}>
-              <div style={{ fontWeight: 800, color: 'var(--text-main)', marginBottom: 4 }}>No Voting Manipulation</div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Automated bots, multi-accounting, and vote brigading are detected and disqualified.</div>
-            </div>
-          </div>
+          <p>
+            All submitted materials and community interactions are governed by the project constitution:
+          </p>
+          <ul style={{ paddingLeft: 24, margin: '12px 0' }}>
+            <li>
+              <strong>Originality and Intellectual Property:</strong> All submissions must consist of original work or assets licensed for open distribution. Direct incorporation of copyrighted third-party media is strictly prohibited.
+            </li>
+            <li>
+              <strong>Collaborative Standards:</strong> Peer reviews and feedback must remain constructive, professional, and respectful. Harassment or discriminatory conduct results in immediate account suspension.
+            </li>
+            <li>
+              <strong>Integrity of Ballots:</strong> Coordinated vote trading, ballot brigading, and artificial rating manipulation are subject to automated disqualification.
+            </li>
+          </ul>
         </section>
+
+        {/* Section 8: See Also */}
+        <section id="see-also">
+          <h2 className="wiki-heading-2">
+            <span>8 See also</span>
+            <a href="#see-also" className="wiki-edit-link">[edit]</a>
+          </h2>
+          <ul style={{ paddingLeft: 24, margin: '12px 0', lineHeight: 1.8 }}>
+            <li><a href="#voting" onClick={(e) => { e.preventDefault(); scrollToSection('voting'); }} className="wiki-link">Borda count</a></li>
+            <li><a href="#overview" onClick={(e) => { e.preventDefault(); scrollToSection('overview'); }} className="wiki-link">Crowdsourced cinema</a></li>
+            <li><a href="#grabbox" onClick={(e) => { e.preventDefault(); scrollToSection('grabbox'); }} className="wiki-link">Blender (software)</a></li>
+            <li><a href="#tracks" onClick={(e) => { e.preventDefault(); scrollToSection('tracks'); }} className="wiki-link">Minecraft in popular culture</a></li>
+            <li><a href="#governance" onClick={(e) => { e.preventDefault(); scrollToSection('governance'); }} className="wiki-link">Decentralized autonomous organization</a></li>
+            <li><a href="#pipeline" onClick={(e) => { e.preventDefault(); scrollToSection('pipeline'); }} className="wiki-link">Machinima</a></li>
+          </ul>
+        </section>
+
+        {/* Section 9: References */}
+        <section id="references">
+          <h2 className="wiki-heading-2">
+            <span>9 References and notes</span>
+            <a href="#references" className="wiki-edit-link">[edit]</a>
+          </h2>
+          <ol className="wiki-references-list">
+            <li id="ref-1">
+              <a href="#overview" className="wiki-backlink">^</a>
+              Seraph Interactive (2026). "Project Stairway: A Decentralized Community Cinema Framework". <em>Open Production Protocol Documentation</em>, v2.4.
+            </li>
+            <li id="ref-2">
+              <a href="#pipeline" className="wiki-backlink">^</a>
+              Stairway Production Committee (2026). "Production Pipeline Architecture and Seventeen-Stage Milestone Roadmap". <em>Community Film Ledger</em>.
+            </li>
+            <li id="ref-3">
+              <a href="#mathematics" className="wiki-backlink">^</a>
+              Governance Working Group (2026). "Mathematical Verification of 3-2-1 Borda Invariance and Sybil Defenses". <em>Journal of Open Media Systems</em>.
+            </li>
+            <li id="ref-4">
+              <a href="#grabbox" className="wiki-backlink">^</a>
+              Asset Ingestion Team (2026). "GrabBox Distributed Scene Task Allocation and Asset Queue Protocol". <em>Technical Specifications v1.2</em>.
+            </li>
+            <li id="ref-5">
+              <a href="#overview" className="wiki-backlink">^</a>
+              Stairway Technical Directors (2026). "Blender and Minecraft Pipeline Interoperability Standards". <em>Voxel Cinema Guidelines</em>.
+            </li>
+            <li id="ref-6">
+              <a href="#overview" className="wiki-backlink">^</a>
+              Open Source Creative Commons License Documentation (2026). "CC-BY-SA 4.0 Open Media Repository Guidelines".
+            </li>
+            <li id="ref-7">
+              <a href="#security" className="wiki-backlink">^</a>
+              Platform Security Operations (2026). "Automated Detection of Coordinated Voting Clusters and Sybil Nodes". <em>Platform Defense Review</em>.
+            </li>
+          </ol>
+        </section>
+
+        {/* Section 10: External Links */}
+        <section id="external-links">
+          <h2 className="wiki-heading-2">
+            <span>10 External links</span>
+            <a href="#external-links" className="wiki-edit-link">[edit]</a>
+          </h2>
+          <ul style={{ paddingLeft: 24, margin: '12px 0', lineHeight: 1.8 }}>
+            <li><a href="#overview" onClick={(e) => { e.preventDefault(); onNavigateTab?.('ballot'); }} className="wiki-link">Official Project Stairway Voting Platform</a></li>
+            <li><a href="#overview" onClick={(e) => { e.preventDefault(); onNavigateTab?.('progress'); }} className="wiki-link">Public Production Pipeline and Milestone Ledger</a></li>
+            <li><a href="https://discord.gg" target="_blank" rel="noopener noreferrer" className="wiki-link">Official Discord Creator Community</a></li>
+            <li><a href="https://github.com" target="_blank" rel="noopener noreferrer" className="wiki-link">Open Source Asset Repositories on GitHub</a></li>
+          </ul>
+        </section>
+
+        {/* Wikipedia Categories Bar */}
+        <div className="wiki-categories">
+          <strong>Categories:</strong>{' '}
+          <a href="#overview">Community animated films</a> |{' '}
+          <a href="#overview">Open-source cinema</a> |{' '}
+          <a href="#overview">Minecraft community projects</a> |{' '}
+          <a href="#governance">Decentralized governance systems</a> |{' '}
+          <a href="#pipeline">2026 computer-animated feature films</a>
+        </div>
       </div>
 
-      {/* Reusable Community Footer */}
+      {/* Footer */}
       <Footer onNavigateTab={onNavigateTab} onNavigateDocs={scrollToSection} />
     </div>
   );

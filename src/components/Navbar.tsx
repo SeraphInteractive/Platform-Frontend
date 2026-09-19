@@ -161,122 +161,114 @@ export const Navbar: React.FC<NavbarProps> = ({
     };
   }, [isMobileDrawerOpen]);
 
-  const activeItemLabel = NAV_ITEMS.find((n) => n.id === activeTab)?.label || activeTab.toUpperCase();
-
   return (
     <>
-      {/* ========================================================
-          1. MOBILE TOP NAVIGATION HEADER (< 768px)
-          ======================================================== */}
-      <header className="mobile-nav-header mobile-only" role="banner">
-        <div className="mobile-nav-header-left">
-          <button
-            className="brand-logo-mark mobile-logo-btn"
-            onClick={() => handleNav('landing')}
-            aria-label="Navigate to Home"
-          >
-            <div className="brand-glyph" />
-          </button>
-          <div className="mobile-header-title-badge">
-            <span className="mobile-brand-name">STAIRWAY</span>
-            <span className="mobile-tab-separator">//</span>
-            <span className="mobile-tab-name">{activeItemLabel}</span>
-          </div>
-        </div>
-
-        <div className="mobile-nav-header-right">
-          <button
-            className="icon-btn mobile-icon-btn"
-            onClick={toggleTheme}
-            aria-label={settings.theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {settings.theme === 'dark' ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            )}
-          </button>
-
-          {user ? (
-            <div style={{ position: 'relative' }}>
-              <button
-                className={`user-pfp-btn mobile-pfp-btn settings-trigger-btn ${showAccountOverview ? 'active' : ''}`}
-                onClick={() => setShowAccountOverview(!showAccountOverview)}
-                aria-label="Account Overview"
-              >
-                {!pfpError ? (
-                  <img
-                    src={getDiscordAvatar(user)}
-                    alt={user.discordUsername}
-                    className="user-pfp-img"
-                    onError={() => setPfpError(true)}
-                  />
-                ) : (
-                  <div className="user-pfp-fallback">
-                    {user.discordUsername ? user.discordUsername.slice(0, 2).toUpperCase() : 'US'}
-                  </div>
-                )}
-              </button>
-
-              <SettingsDropdown
-                isOpen={showAccountOverview}
-                onClose={() => setShowAccountOverview(false)}
-                onNavigateSettings={() => {
-                  setShowAccountOverview(false);
-                  onNavigateSettings('account_info');
-                }}
-                onNavigateTab={(tab) => {
-                  setShowAccountOverview(false);
-                  handleNav(tab);
-                }}
-              />
-            </div>
-          ) : (
+      {isHomePage && (
+        <header className="mobile-nav-header mobile-only" role="banner">
+          <div className="mobile-nav-header-left">
             <button
-              className="icon-btn mobile-icon-btn mobile-discord-btn"
-              onClick={loginWithDiscord}
-              aria-label="Sign in with Discord"
+              className="brand-logo-mark mobile-logo-btn"
+              onClick={() => handleNav('landing')}
+              aria-label="Navigate to Home"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-              </svg>
+              <div className="brand-glyph" />
             </button>
-          )}
+            <div className="mobile-header-title-badge">
+              <span className="mobile-brand-name">STAIRWAY</span>
+            </div>
+          </div>
 
-          <button
-            className={`icon-btn mobile-menu-btn ${isMobileDrawerOpen ? 'active' : ''}`}
-            onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
-            aria-label={isMobileDrawerOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
-            aria-expanded={isMobileDrawerOpen}
-            aria-controls="mobile-nav-drawer"
-          >
-            {isMobileDrawerOpen ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+          <div className="mobile-nav-header-right">
+            <button
+              className="icon-btn mobile-icon-btn"
+              onClick={toggleTheme}
+              aria-label={settings.theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {settings.theme === 'dark' ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
+
+            {user ? (
+              <div style={{ position: 'relative' }}>
+                <button
+                  className={`user-pfp-btn mobile-pfp-btn settings-trigger-btn ${showAccountOverview ? 'active' : ''}`}
+                  onClick={() => setShowAccountOverview(!showAccountOverview)}
+                  aria-label="Account Overview"
+                >
+                  {!pfpError ? (
+                    <img
+                      src={getDiscordAvatar(user)}
+                      alt={user.discordUsername}
+                      className="user-pfp-img"
+                      onError={() => setPfpError(true)}
+                    />
+                  ) : (
+                    <div className="user-pfp-fallback">
+                      {user.discordUsername ? user.discordUsername.slice(0, 2).toUpperCase() : 'US'}
+                    </div>
+                  )}
+                </button>
+
+                <SettingsDropdown
+                  isOpen={showAccountOverview}
+                  onClose={() => setShowAccountOverview(false)}
+                  onNavigateSettings={() => {
+                    setShowAccountOverview(false);
+                    onNavigateSettings('account_info');
+                  }}
+                  onNavigateTab={(tab) => {
+                    setShowAccountOverview(false);
+                    handleNav(tab);
+                  }}
+                />
+              </div>
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
+              <button
+                className="icon-btn mobile-icon-btn mobile-discord-btn"
+                onClick={loginWithDiscord}
+                aria-label="Sign in with Discord"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                </svg>
+              </button>
             )}
-          </button>
-        </div>
-      </header>
 
-      {/* ========================================================
-          2. ACCESSIBLE MOBILE SLIDE-IN DRAWER (< 768px)
-          ======================================================== */}
+            <button
+              className={`icon-btn mobile-menu-btn ${isMobileDrawerOpen ? 'active' : ''}`}
+              onClick={() => setIsMobileDrawerOpen(!isMobileDrawerOpen)}
+              aria-label={isMobileDrawerOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
+              aria-expanded={isMobileDrawerOpen}
+              aria-controls="mobile-nav-drawer"
+            >
+              {isMobileDrawerOpen ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </header>
+      )}
+
       <div
         className={`mobile-drawer-overlay mobile-only ${isMobileDrawerOpen ? 'open' : ''}`}
         onClick={() => setIsMobileDrawerOpen(false)}
@@ -388,9 +380,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </aside>
 
-      {/* ========================================================
-          3. DESKTOP NON-HOMEPAGE VERTICAL RIGHT RAIL (>= 768px)
-          ======================================================== */}
       {!isHomePage && (
         <aside className="right-nav-rail desktop-only">
           {/* Top: Brand Logo */}
@@ -525,9 +514,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         </aside>
       )}
 
-      {/* ========================================================
-          4. DESKTOP HOMEPAGE FLOATING PILL NAVBAR (>= 768px)
-          ======================================================== */}
       {isHomePage && (
         <header className={`top-navbar-fixed-container desktop-only ${isNavVisible ? 'nav-visible' : 'nav-hidden'}`}>
           <div className="top-navbar">
