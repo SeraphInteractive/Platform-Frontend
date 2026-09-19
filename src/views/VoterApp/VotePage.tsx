@@ -183,16 +183,13 @@ export const VotePage: React.FC<VotePageProps> = ({
 
   return (
     <div
-      className="card"
+      className="card vote-page-card"
       style={{
         padding: 'clamp(14px, 2vh, 22px) clamp(16px, 2.5vw, 32px)',
         background: 'var(--bg-card)',
         flex: 1,
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
-        minHeight: 0,
-        overflow: 'hidden',
         boxSizing: 'border-box',
       }}
     >

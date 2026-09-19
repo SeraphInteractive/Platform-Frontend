@@ -198,10 +198,58 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       </div>
 
+      {/* Mobile Horizontal Sub-Tab Strip */}
+      <nav className="settings-nav-tabs mobile-only" aria-label="Settings Categories">
+        <button
+          type="button"
+          className={`settings-tab-chip ${activeSubTab === 'account_info' || activeSubTab === 'account_standing' || activeSubTab === 'account_security' ? 'active' : ''}`}
+          onClick={() => scrollToSection('account_info')}
+        >
+          Profile
+        </button>
+        <button
+          type="button"
+          className={`settings-tab-chip ${activeSubTab === 'app_theme' || activeSubTab === 'app_density' ? 'active' : ''}`}
+          onClick={() => scrollToSection('app_theme')}
+        >
+          Appearance
+        </button>
+        <button
+          type="button"
+          className={`settings-tab-chip ${activeSubTab === 'a11y_text_size' || activeSubTab === 'a11y_contrast' ? 'active' : ''}`}
+          onClick={() => scrollToSection('a11y_text_size')}
+        >
+          Accessibility
+        </button>
+        <button
+          type="button"
+          className={`settings-tab-chip ${activeSubTab === 'media_entries' || activeSubTab === 'act_ballot' || activeSubTab === 'act_notifications' ? 'active' : ''}`}
+          onClick={() => scrollToSection('media_entries')}
+        >
+          Activity
+        </button>
+        <button
+          type="button"
+          className={`settings-tab-chip ${activeSubTab === 'rules_lifecycle' || activeSubTab === 'legal_terms' ? 'active' : ''}`}
+          onClick={() => scrollToSection('rules_lifecycle')}
+        >
+          Rules &amp; Terms
+        </button>
+        {user?.role === 'admin' && (
+          <button
+            type="button"
+            className={`settings-tab-chip ${activeSubTab === 'dev_roles' ? 'active' : ''}`}
+            onClick={() => scrollToSection('dev_roles')}
+          >
+            Admin
+          </button>
+        )}
+      </nav>
+
       {/* 2-Column Desktop Architecture Layout */}
       <div className="settings-page-layout">
         {/* Navigation Sidebar */}
-        <aside className="settings-nav-card">
+        <aside className="settings-nav-card desktop-only">
           <div className="settings-sidebar-group">
             <div className="settings-sidebar-header">Profile</div>
             <div className="settings-subsection-list">

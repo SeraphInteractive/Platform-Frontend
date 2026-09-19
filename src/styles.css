@@ -4744,6 +4744,48 @@ select:focus {
 .settings-nav-tabs {
   display: flex;
   gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 10px 2px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.settings-nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-tab-chip {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.15s ease;
+}
+
+.settings-tab-chip:hover {
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+
+.settings-tab-chip.active {
+  background: var(--accent-dark, #1e293b);
+  color: #ffffff;
+  border-color: var(--accent-dark, #1e293b);
+}
+
+[data-theme="dark"] .settings-tab-chip.active {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #f8fafc;
 }
 
 .progress-timeline-track {
@@ -4802,7 +4844,59 @@ select:focus {
 
   .settings-nav-tabs {
     overflow-x: auto;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+  }
+
+  .settings-section-card {
+    padding: 16px 14px !important;
+    gap: 14px !important;
+    border-radius: var(--radius-md) !important;
+    scroll-margin-top: 60px !important;
+  }
+
+  .settings-panel-box {
+    padding: 14px 12px !important;
+    gap: 10px !important;
+  }
+
+  .warning-meter {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .warning-slot {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 10px 14px !important;
+  }
+
+  .text-size-presets {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .settings-scroll-container {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 24px)) !important;
+  }
+
+  .vote-page-card {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 24px)) !important;
+  }
+
+  .tab-content-ballot {
+    height: auto !important;
+    overflow: visible !important;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 24px)) !important;
+  }
+
+  .drop-slots-column {
+    margin-bottom: 24px !important;
+    padding-bottom: 24px !important;
   }
 
   .progress-timeline-track {
@@ -4823,7 +4917,14 @@ select:focus {
     max-width: 580px;
     align-self: center;
   }
+
+  .vote-page-card {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
 }
+
 
 
 
