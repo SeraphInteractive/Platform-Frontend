@@ -3210,11 +3210,22 @@ select:focus {
 .brand-logo-mark,
 .icon-btn,
 .user-pfp-btn,
+.settings-trigger-btn,
 .right-nav-icon-btn,
 .right-nav-logo {
   min-width: 44px;
   min-height: 44px;
   box-sizing: border-box;
+}
+
+.settings-trigger-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .icon-btn {
@@ -3687,9 +3698,13 @@ select:focus {
 
   /* Account Overview Popover: Repositioned as Mobile Bottom Sheet to prevent clipping */
   .account-overview-popover,
+  .settings-dropdown-popover,
   .right-nav-rail .account-overview-popover,
+  .right-nav-rail .settings-dropdown-popover,
   .left-nav-rail .account-overview-popover,
-  .top-navbar .account-overview-popover {
+  .left-nav-rail .settings-dropdown-popover,
+  .top-navbar .account-overview-popover,
+  .top-navbar .settings-dropdown-popover {
     position: fixed !important;
     top: auto !important;
     bottom: 0 !important;
@@ -3745,6 +3760,7 @@ select:focus {
   .icon-btn,
   .right-nav-icon-btn,
   .user-pfp-btn,
+  .settings-trigger-btn,
   .nav-link-btn,
   .account-theme-btn,
   .account-close-btn {
