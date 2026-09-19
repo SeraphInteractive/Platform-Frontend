@@ -322,9 +322,13 @@ export const NetworkTelemetryChart: React.FC<NetworkTelemetryChartProps> = ({
       // Determine request URL
       let url: string;
       if (ep.id === 'ep_root') {
-        url = baseUrl.includes('/api/v1') ? baseUrl.replace('/api/v1', '') || '/' : baseUrl || '/';
+        url = baseUrl.startsWith('http')
+          ? (baseUrl.includes('/api/v1') ? baseUrl.replace('/api/v1', '') || '/' : baseUrl || '/')
+          : '/health';
       } else if (ep.id === 'ep_health') {
-        url = baseUrl.includes('/api/v1') ? baseUrl.replace('/api/v1', '/health') : `${baseUrl}/health`;
+        url = baseUrl.startsWith('http')
+          ? (baseUrl.includes('/api/v1') ? baseUrl.replace('/api/v1', '/health') : `${baseUrl}/health`)
+          : '/health';
       } else {
         url = `${baseUrl}${cleanPath}`;
       }
@@ -344,15 +348,18 @@ export const NetworkTelemetryChart: React.FC<NetworkTelemetryChartProps> = ({
         });
         const elapsed = Math.max(1, Math.round(performance.now() - start));
         
-        // Status determination: 2xx, 3xx, 401, 403, 405 indicate the endpoint is online
+        // Status determination: 2xx, 3xx, 400, 401, 403, 404, 405, 422 indicate the server is online and responding
         const isOpaqueRedirect = res.type === 'opaqueredirect';
         const statusNum = isOpaqueRedirect ? 302 : res.status;
         const isHealthy =
           isOpaqueRedirect ||
           (res.status >= 200 && res.status < 400) ||
+          res.status === 400 ||
           res.status === 401 ||
           res.status === 403 ||
-          res.status === 405;
+          res.status === 404 ||
+          res.status === 405 ||
+          res.status === 422;
 
         setMetrics((prev) => {
           const cur = prev[ep.id] || {

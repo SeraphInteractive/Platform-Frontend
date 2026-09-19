@@ -8,13 +8,19 @@ export interface ApiErrorResponse {
   message?: string;
 }
 
-const DEFAULT_API_URL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env?.VITE_API_URL || 'https://api.seraphinteractive.com/api/v1';
+const isLocalhost = typeof window !== 'undefined' && (
+  window.location.hostname === 'localhost' ||
+  window.location.hostname === '127.0.0.1' ||
+  window.location.hostname === '0.0.0.0'
+);
+
+const DEFAULT_API_URL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env?.VITE_API_URL || (isLocalhost ? '/api/v1' : 'https://api.seraphinteractive.com/api/v1');
 
 export function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('mcs_api_base_url');
-    // Clear out deprecated Google Cloud IP or relative path if stored
-    if (saved && (saved.includes('35.192.18.39') || saved.includes('undefined') || saved.includes('null') || saved === '/api/v1')) {
+    // Clear out deprecated Google Cloud IP or invalid entries
+    if (saved && (saved.includes('35.192.18.39') || saved.includes('undefined') || saved.includes('null'))) {
       localStorage.removeItem('mcs_api_base_url');
       return DEFAULT_API_URL;
     }
