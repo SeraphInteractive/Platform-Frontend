@@ -8,7 +8,7 @@ export function useScrollReveal(dependencies: unknown[] = []) {
   useEffect(() => {
     // If native CSS scroll-driven animations are supported, we still add is-revealed for styling hooks
     const targets = document.querySelectorAll<HTMLElement>(
-      '.landing-hero, .landing-metric-card, .landing-showcase-card, .landing-proposal-card, .ballot-slot, .pitch-card, .card, .white-card, .scroll-reveal'
+      '.landing-hero, .landing-metric-card, .landing-showcase-card, .landing-proposal-card, .ballot-slot, .pitch-card, .card, .white-card, .scroll-reveal, .panel-reveal-left, .panel-reveal-right, .panel-reveal-fade'
     );
 
     const observer = new IntersectionObserver(

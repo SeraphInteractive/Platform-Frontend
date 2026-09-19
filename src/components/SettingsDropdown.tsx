@@ -20,6 +20,17 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
   const { settings, toggleTheme } = useSettings();
   const [imgErr, setImgErr] = useState(false);
 
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleLogout = () => {
@@ -31,17 +42,31 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
   const avatarUrl = getDiscordAvatar(user);
 
   return (
-    <div className="account-overview-popover" onClick={(e) => e.stopPropagation()}>
-      {/* Header */}
-      <div className="account-overview-header">
-        <span className="account-overview-title">Account</span>
-        <button className="icon-btn-sm" onClick={onClose} title="Close">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
+    <>
+      <div className="account-popover-backdrop" onClick={onClose} aria-hidden="true" />
+      <div
+        className="account-overview-popover"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Account Overview"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="account-popover-drag-pill" aria-hidden="true" />
+        {/* Header */}
+        <div className="account-overview-header">
+          <span className="account-overview-title">Account</span>
+          <button
+            className="icon-btn-sm account-close-btn"
+            onClick={onClose}
+            title="Close"
+            aria-label="Close Account Dialog"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
 
       {user ? (
         <>
@@ -101,9 +126,9 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
             <div className="account-prop-row">
               <span className="account-prop-label">Theme</span>
               <button
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '11px', padding: '2px 8px' }}
+                className="btn btn-secondary btn-sm account-theme-btn"
                 onClick={toggleTheme}
+                aria-label={settings.theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               >
                 {settings.theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
               </button>
@@ -139,5 +164,6 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
         </div>
       )}
     </div>
+    </>
   );
 };

@@ -138,6 +138,63 @@ body:not([data-theme="dark"]) {
   background-attachment: fixed;
 }
 
+/* Typography Foundations */
+.font-minecraft {
+  font-family: var(--font-minecraft) !important;
+}
+
+.brand-title,
+.hero-title,
+.project-name {
+  font-family: var(--font-minecraft);
+  letter-spacing: 0.04em;
+}
+
+.font-mono,
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* ========================================================
+   INTERACTIVE HOMEPAGE SCROLL & SLIDE-IN REVEAL PANELS
+   ======================================================== */
+.panel-reveal-left {
+  opacity: 0;
+  transform: translateX(-48px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+.panel-reveal-right {
+  opacity: 0;
+  transform: translateX(48px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+.panel-reveal-fade {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+.panel-reveal-left.is-revealed,
+.panel-reveal-right.is-revealed,
+.panel-reveal-fade.is-revealed {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+[data-reduced-motion="true"] .panel-reveal-left,
+[data-reduced-motion="true"] .panel-reveal-right,
+[data-reduced-motion="true"] .panel-reveal-fade {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -173,6 +230,9 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
   background-color: var(--bg-app);
   color: var(--text-main);
   font-family: var(--font-sans);
@@ -280,21 +340,25 @@ html, body {
 }
 
 #root {
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
 
 /* App Root Layouts */
 .app-root-layout {
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
   display: flex;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .app-root-layout.layout-homepage {
@@ -302,6 +366,7 @@ html, body {
   overflow-y: auto;
   overflow-x: hidden;
   height: 100vh;
+  height: 100dvh;
 }
 
 .app-root-layout.layout-with-sidebar {
@@ -311,6 +376,7 @@ html, body {
   box-sizing: border-box;
   overflow: hidden;
   height: 100vh;
+  height: 100dvh;
 }
 
 .dashboard-container {
@@ -367,6 +433,12 @@ html, body {
   min-height: 0;
   height: 100%;
   width: 100%;
+}
+
+.tab-content-ballot {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .container {
@@ -798,7 +870,38 @@ html, body {
   border-color: var(--border-strong);
 }
 
-/* Account Overview Popover */
+/* Account Overview Popover & Backdrop */
+.account-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 13, 22, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1090;
+}
+
+.account-popover-drag-pill {
+  display: none;
+}
+
+.account-close-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.account-theme-btn {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+}
+
 .account-overview-popover {
   position: absolute;
   top: 52px;
@@ -809,7 +912,7 @@ html, body {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
   padding: 20px;
-  z-index: 1000;
+  z-index: 1100;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -3097,6 +3200,659 @@ select:focus {
     box-shadow: 0 0 16px rgba(234, 179, 8, 0.35);
   }
 }
+
+/* ========================================================
+   RESPONSIVE NAVIGATION BREAKPOINTS & TOUCH ENFORCEMENT
+   ======================================================== */
+
+/* Global Touch Target Standardization (WCAG >= 44x44px) */
+.brand-logo-mark,
+.icon-btn,
+.user-pfp-btn,
+.right-nav-icon-btn,
+.right-nav-logo {
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+}
+
+.user-pfp-btn {
+  width: 44px;
+  height: 44px;
+}
+
+.right-nav-logo {
+  width: 44px;
+  height: 44px;
+}
+
+.icon-btn-sm {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Default Mobile Elements Hidden on Desktop/Tablet */
+.mobile-only {
+  display: none;
+}
+
+/* ========================================================
+   MOBILE TOP HEADER (< 768px)
+   ======================================================== */
+.mobile-nav-header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 900;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.mobile-nav-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mobile-logo-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+}
+
+.mobile-header-title-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.mobile-brand-name {
+  font-family: var(--font-minecraft);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--text-main);
+}
+
+.mobile-tab-separator {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.mobile-tab-name {
+  color: var(--accent-green, #10b981);
+  font-size: 11px;
+  background: rgba(16, 185, 129, 0.12);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+}
+
+.mobile-nav-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mobile-icon-btn,
+.mobile-menu-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card-muted);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mobile-icon-btn:active,
+.mobile-menu-btn:active {
+  transform: scale(0.95);
+  background: var(--bg-card-hover);
+}
+
+.mobile-pfp-btn {
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ========================================================
+   ACCESSIBLE MOBILE SLIDE-IN DRAWER (< 768px)
+   ======================================================== */
+.mobile-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 998;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mobile-drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-nav-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 85vw);
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-subtle);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+
+.mobile-nav-drawer.open {
+  transform: translateX(0);
+}
+
+.mobile-drawer-header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.mobile-drawer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.mobile-drawer-title {
+  font-family: var(--font-minecraft);
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--text-main);
+  letter-spacing: 0.04em;
+}
+
+.mobile-drawer-close-btn {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.mobile-drawer-user-card {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-card-muted);
+}
+
+.mobile-user-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mobile-user-avatar-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.mobile-user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mobile-user-name {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-drawer-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 10px;
+  gap: 4px;
+  flex: 1;
+}
+
+.mobile-nav-item,
+.mobile-drawer-nav-item {
+  min-height: 50px;
+  height: 50px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.mobile-nav-item:active,
+.mobile-drawer-nav-item:active {
+  background: var(--bg-card-hover);
+  transform: scale(0.98);
+}
+
+.mobile-nav-item.active,
+.mobile-drawer-nav-item.active {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent-green, #10b981);
+  border-left: 3px solid #10b981;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .mobile-nav-item.active,
+[data-theme="dark"] .mobile-drawer-nav-item.active {
+  background: rgba(16, 185, 129, 0.16);
+  color: #34d399;
+}
+
+.mobile-nav-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mobile-nav-item-label,
+.mobile-nav-label {
+  flex: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.mobile-nav-bar {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+.mobile-active-pill {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: #059669;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.mobile-drawer-action-box {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.mobile-action-btn {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-drawer-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.mobile-legal-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-muted);
+}
+
+.mobile-legal-link {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 6px 4px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mobile-drawer-version {
+  text-align: center;
+  color: var(--text-light);
+  font-size: 10px;
+}
+
+/* ========================================================
+   SEMANTIC RESPONSIVE BREAKPOINTS (MILESTONE 1)
+   Mobile (<768px), Tablet (768px-1023px), Desktop (>=1024px)
+   ======================================================== */
+
+/* --------------------------------------------------------
+   1. MOBILE VIEWPORTS (< 768px)
+   -------------------------------------------------------- */
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: flex !important;
+  }
+
+  /* Right navigation rail collapsed from document flow */
+  .right-nav-rail,
+  .left-nav-rail {
+    display: none !important;
+  }
+
+  /* Desktop top navbar hidden on mobile */
+  .top-navbar-fixed-container {
+    display: none !important;
+  }
+
+  /* Layout Root & Container Adaptations */
+  .app-root-layout.layout-with-sidebar {
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .dashboard-container.container-sidebar {
+    height: auto;
+    min-height: 100%;
+    padding: 8px 12px 72px 12px;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .dashboard-container.container-homepage {
+    padding: 72px 14px 20px;
+    min-height: auto;
+  }
+
+  .landing-container {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .slot-card-body {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+  }
+
+  .page-view-wrapper {
+    overflow-y: auto;
+  }
+
+  /* Page View Wrapper Vertical Scroll Unlocking */
+  .page-view-wrapper.page-non-scroll {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    height: auto;
+    min-height: 100%;
+  }
+
+  .page-view-wrapper.page-scrollable {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100%;
+    padding-right: 0;
+  }
+
+  .tab-content-ballot {
+    height: auto;
+    min-height: 100%;
+    overflow: visible !important;
+  }
+
+  /* Account Overview Popover: Repositioned as Mobile Bottom Sheet to prevent clipping */
+  .account-overview-popover,
+  .right-nav-rail .account-overview-popover,
+  .left-nav-rail .account-overview-popover,
+  .top-navbar .account-overview-popover {
+    position: fixed !important;
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+    padding: 16px 20px max(24px, env(safe-area-inset-bottom, 24px)) !important;
+    box-sizing: border-box !important;
+    z-index: 1100 !important;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5) !important;
+    animation: account-sheet-slide-up 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  @keyframes account-sheet-slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .account-popover-drag-pill {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-strong, #334155);
+    margin: 0 auto 12px;
+  }
+
+  .account-actions-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .account-actions-row .btn {
+    width: 100%;
+    min-height: 44px !important;
+  }
+
+  /* Touch Ergonomics: Enforce >= 44x44px minimum interactive targets */
+  .btn,
+  .icon-btn,
+  .right-nav-icon-btn,
+  .user-pfp-btn,
+  .nav-link-btn,
+  .account-theme-btn,
+  .account-close-btn {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+}
+
+/* --------------------------------------------------------
+   2. TABLET VIEWPORTS (768px - 1023px)
+   -------------------------------------------------------- */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .desktop-only {
+    display: flex !important;
+  }
+
+  .mobile-only {
+    display: none !important;
+  }
+
+  /* Layout Root & Rail Adjustments */
+  .app-root-layout.layout-with-sidebar {
+    padding: 8px;
+    gap: 10px;
+  }
+
+  .right-nav-rail,
+  .left-nav-rail {
+    width: 56px;
+    padding: 10px 4px;
+  }
+
+  .dashboard-container.container-sidebar {
+    padding: 4px 6px;
+  }
+
+  /* Page Wrapper Scroll Unlocking for viewports < 1024px */
+  .page-view-wrapper {
+    overflow-y: auto;
+  }
+
+  .page-view-wrapper.page-non-scroll {
+    overflow-y: auto !important;
+    height: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-content-ballot {
+    height: auto;
+    min-height: 100%;
+    overflow: visible !important;
+  }
+
+  /* Account Overview Popover within tablet boundaries */
+  .right-nav-rail .account-overview-popover,
+  .left-nav-rail .account-overview-popover {
+    right: calc(100% + 8px);
+    max-width: 280px;
+  }
+}
+
+/* --------------------------------------------------------
+   3. DESKTOP VIEWPORTS (>= 1024px)
+   -------------------------------------------------------- */
+@media (min-width: 1024px) {
+  .desktop-only {
+    display: flex !important;
+  }
+
+  .mobile-only {
+    display: none !important;
+  }
+
+  /* Desktop Preservation: Full fidelity defaults maintained */
+  .app-root-layout.layout-with-sidebar {
+    flex-direction: row;
+    padding: 12px;
+    gap: 14px;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .right-nav-rail,
+  .left-nav-rail {
+    display: flex !important;
+    width: 64px;
+    height: calc(100vh - 24px);
+  }
+
+  .dashboard-container.container-sidebar {
+    height: calc(100vh - 24px);
+    overflow: hidden;
+  }
+
+  .page-view-wrapper.page-non-scroll {
+    overflow: hidden;
+    height: 100%;
+  }
+
+  .tab-content-ballot {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
 
 
 

@@ -10,48 +10,65 @@ interface TrackData {
   tag: string;
   imageSrc: string;
   docSection: DocsSectionId;
+  description: string;
+  highlights: string[];
 }
 
 const TRACKS: TrackData[] = [
   {
     id: 'story',
-    title: 'Story',
+    title: 'Story & Narrative',
     badge: 'Narrative',
     tag: 'Ranked Choice',
     imageSrc: '/images/scaffold/swamp_night.jpg',
-    docSection: 'mathematics',
+    docSection: 'tracks',
+    description:
+      'Propose storyline treatments, dialogue drafts, and character arcs. Community ballots determine key plot milestones through mathematical consensus.',
+    highlights: ['Plot Treatments', 'Scene Dialogues', 'Consensus Voting'],
   },
   {
     id: 'art',
-    title: 'Art Style',
+    title: 'Art Style & Visuals',
     badge: 'Visuals',
     tag: 'Community Direction',
     imageSrc: '/images/scaffold/three_biomes.jpg',
-    docSection: 'pipeline',
+    docSection: 'tracks',
+    description:
+      'Shape the visual aesthetic, color scripts, and lighting profiles. Establish the cinematic look across lush swamps, birch forests, and deep caverns.',
+    highlights: ['Color Scripts', 'Atmospheric Lighting', 'Visual Direction'],
   },
   {
     id: 'builds',
-    title: 'Builds & Sets',
+    title: 'Builds & World Sets',
     badge: 'World',
     tag: '3D Schematics',
     imageSrc: '/images/scaffold/birch_forest.jpg',
-    docSection: 'pipeline',
+    docSection: 'tracks',
+    description:
+      'Construct voxel sets, landmark locations, and environmental terrain. Submit WorldEdit 3D schematics and world saves for cinematic camera staging.',
+    highlights: ['Voxel Set Construction', '3D Schematics', 'Set Staging'],
   },
   {
     id: 'voice',
-    title: 'Voice Casting',
+    title: 'Voice Casting & Audio',
     badge: 'Audio',
     tag: 'Voice Stems',
     imageSrc: '/images/scaffold/swamp_boat.jpg',
     docSection: 'supervision',
+    description:
+      'Audition for character roles, design sound effects (SFX), and compose orchestral themes. Department leads review and assemble stems into master tracks.',
+    highlights: ['Character Auditions', 'Foley & SFX Design', 'Music Stems'],
   },
   {
     id: 'animation',
-    title: 'Animation',
+    title: 'Animation & Scene Staging',
     badge: 'Scene',
     tag: 'GrabBox Queue',
     imageSrc: '/images/scaffold/mangrove_canopy.jpg',
     docSection: 'grabbox',
+    description:
+      'Claim storyboarded shots from the GrabBox queue, animate 2D/3D character performances, and submit render passes for supervisor review.',
+    highlights: ['GrabBox Queue', 'Keyframe Animation', 'Shot Reviews'],
   },
 ];
 
@@ -60,95 +77,133 @@ interface TrackShowcaseProps {
   onOpenCreatePitch?: () => void;
 }
 
-export const TrackShowcase: React.FC<TrackShowcaseProps> = ({ onNavigateDocs }) => {
+export const TrackShowcase: React.FC<TrackShowcaseProps> = ({
+  onNavigateDocs,
+  onOpenCreatePitch,
+}) => {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-        background: 'var(--bg-card)',
-        padding: '24px 28px',
-        borderRadius: '16px',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.01em', margin: 0 }}>
-          Tracks
-        </h2>
-      </div>
+    <>
+      {TRACKS.map((t, index) => {
+        const isEven = index % 2 === 0;
+        const revealClass = isEven ? 'panel-reveal-left' : 'panel-reveal-right';
+        const cardClass = `landing-showcase-card ${isEven ? '' : 'reverse'} ${revealClass}`;
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 14,
-        }}
-      >
-        {TRACKS.map((t) => (
-          <div
-            key={t.id}
-            onClick={() => onNavigateDocs?.(t.docSection)}
-            style={{
-              position: 'relative',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              background: 'var(--bg-card-muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              transition: 'transform 0.15s ease, background 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.background = 'var(--bg-card-hover)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.background = 'var(--bg-card-muted)';
-            }}
-          >
-            <div style={{ position: 'relative', width: '100%', height: 130, overflow: 'hidden' }}>
-              <img
-                src={t.imageSrc}
-                alt={t.title}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                }}
-              />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 8,
-                  left: 8,
-                  background: 'rgba(6, 9, 19, 0.82)',
-                  backdropFilter: 'blur(6px)',
-                  color: '#f8fafc',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  padding: '2px 7px',
-                  borderRadius: '5px',
-                  letterSpacing: '0.02em',
-                }}
-              >
-                {t.badge}
-              </span>
-            </div>
-
-            <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main)' }}>
-                {t.title}
-              </div>
-              <div className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                {t.tag}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+        return (
+          <section key={t.id} className={cardClass}>
+            {isEven ? (
+              <>
+                <div className="landing-art-container">
+                  <img
+                    src={t.imageSrc}
+                    alt={t.title}
+                    className="landing-art-img"
+                  />
+                </div>
+                <div className="landing-showcase-body">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="badge badge-engine">{t.badge}</span>
+                    <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {t.tag}
+                    </span>
+                  </div>
+                  <div className="landing-cta-headline">{t.title}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                    {t.description}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                    {t.highlights.map((h) => (
+                      <span
+                        key={h}
+                        style={{
+                          background: 'var(--bg-card-muted)',
+                          color: 'var(--text-main)',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '3px 9px',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: '9px 18px', fontSize: '13px' }}
+                      onClick={() => onNavigateDocs?.(t.docSection)}
+                    >
+                      Track Guide
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      style={{ padding: '9px 18px', fontSize: '13px' }}
+                      onClick={onOpenCreatePitch}
+                    >
+                      + Submit Pitch
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="landing-showcase-body">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="badge badge-engine">{t.badge}</span>
+                    <span className="mono" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      {t.tag}
+                    </span>
+                  </div>
+                  <div className="landing-cta-headline">{t.title}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                    {t.description}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                    {t.highlights.map((h) => (
+                      <span
+                        key={h}
+                        style={{
+                          background: 'var(--bg-card-muted)',
+                          color: 'var(--text-main)',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '3px 9px',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        {h}
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: '9px 18px', fontSize: '13px' }}
+                      onClick={() => onNavigateDocs?.(t.docSection)}
+                    >
+                      Track Guide
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      style={{ padding: '9px 18px', fontSize: '13px' }}
+                      onClick={onOpenCreatePitch}
+                    >
+                      + Submit Pitch
+                    </button>
+                  </div>
+                </div>
+                <div className="landing-art-container">
+                  <img
+                    src={t.imageSrc}
+                    alt={t.title}
+                    className="landing-art-img"
+                  />
+                </div>
+              </>
+            )}
+          </section>
+        );
+      })}
+    </>
   );
 };

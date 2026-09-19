@@ -173,12 +173,12 @@ const MainDashboardLayout: React.FC = () => {
     if (newTab === activeTab) return;
     if (settings.reducedMotion) {
       setActiveTab(newTab);
-      window.scrollTo({ top: 0, behavior: 'instant' });
+      window.scrollTo(0, 0);
       return;
     }
     blazeRef.current?.startTransition(() => {
       setActiveTab(newTab);
-      window.scrollTo({ top: 0, behavior: 'instant' });
+      window.scrollTo(0, 0);
     });
   };
 
@@ -226,7 +226,7 @@ const MainDashboardLayout: React.FC = () => {
           )}
 
           {activeTab === 'ballot' && (
-            <div className="tab-content-area" style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}>
+            <div className="tab-content-area tab-content-ballot">
               {ballotSuccessMessage && (
                 <div className="callout callout-success" style={{ marginBottom: 12, flexShrink: 0 }}>
                   {ballotSuccessMessage}
