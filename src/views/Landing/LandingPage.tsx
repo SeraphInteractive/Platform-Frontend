@@ -134,10 +134,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </section>
 
       {/* 2. Interactive Production Tracks Showcase Panels */}
-      <TrackShowcase
-        onNavigateDocs={onNavigateDocs || (() => {})}
-        onOpenCreatePitch={onOpenCreatePitch}
-      />
+      <TrackShowcase />
 
       {/* 3. Production Overview Card (Slide in Right) */}
       <section className="landing-showcase-card reverse panel-reveal-right">
