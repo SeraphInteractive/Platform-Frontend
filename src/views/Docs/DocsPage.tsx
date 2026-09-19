@@ -432,7 +432,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
           </table>
 
           <p>
-            The cumulative score <em>S<sub>i</sub></em> for any candidate proposal <em>i</em> across <em>N</em> submitted ballots is calculated as:
+            The cumulative score <em>S<sub>i</sub></em> for any candidate proposal <em>i</em> across <em>N</em> submitted ballots is calculated using the linear positional scoring function<sup className="wiki-citation"><a href="#ref-3">[3]</a></sup><sup className="wiki-citation"><a href="#ref-8">[8]</a></sup>:
           </p>
 
           <div className="wiki-math-box" style={{ padding: '16px 20px', textAlign: 'center', fontSize: '15px' }}>
@@ -442,7 +442,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
           </div>
 
           <p>
-            where <em>r<sub>j,i</sub></em> denotes the rank assigned to proposal <em>i</em> by voter <em>j</em>, and <strong>1</strong>(·) is the indicator function evaluating to 1 when the condition is satisfied and 0 otherwise.
+            where <em>r<sub>j,i</sub></em> denotes the ordinal rank assigned to proposal <em>i</em> by voter <em>j</em>, and <strong>1</strong>(·) is the indicator function evaluating to 1 when the condition is satisfied and 0 otherwise<sup className="wiki-citation"><a href="#ref-9">[9]</a></sup>.
           </p>
 
           <h3 id="mathematics" className="wiki-heading-3">
@@ -450,7 +450,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
             <a href="#mathematics" className="wiki-edit-link">[edit]</a>
           </h3>
           <p>
-            A foundational mathematical property of the voting mechanism is exact point conservation. Every valid ballot assigns an invariant sum of six points into the proposal pool:
+            A foundational mathematical property of the voting mechanism is exact point conservation under finite positional vectors<sup className="wiki-citation"><a href="#ref-10">[10]</a></sup>. Every valid ballot assigns an invariant sum of six points into the proposal pool:
           </p>
 
           <div className="wiki-math-box" style={{ padding: '16px 20px', textAlign: 'center', fontSize: '15px' }}>
@@ -460,7 +460,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
           </div>
 
           <p>
-            Summing across all <em>M</em> candidate proposals in an election with <em>N</em> valid ballots yields the total pool conservation theorem:
+            Summing across all <em>M</em> candidate proposals in an election with <em>N</em> valid ballots yields the total pool conservation theorem<sup className="wiki-citation"><a href="#ref-3">[3]</a></sup><sup className="wiki-citation"><a href="#ref-11">[11]</a></sup>:
           </p>
 
           <div className="wiki-math-box" style={{ padding: '16px 20px', textAlign: 'center', fontSize: '16px' }}>
@@ -470,7 +470,7 @@ export const DocsPage: React.FC<DocsPageProps> = ({
           </div>
 
           <p>
-            Because the point contribution per ballot is mathematically bounded, individual voters cannot inflate or dilute the total voting pool beyond their allocated quota. This prevents strategic bullet-voting distortions and guarantees systemic balance across all voting cycles<sup className="wiki-citation"><a href="#ref-3">[3]</a></sup>.
+            Because the point contribution per ballot is mathematically bounded, individual voters cannot inflate or dilute the total voting pool beyond their allocated quota. This prevents strategic bullet-voting distortions and guarantees systemic balance across all voting cycles<sup className="wiki-citation"><a href="#ref-8">[8]</a></sup><sup className="wiki-citation"><a href="#ref-10">[10]</a></sup>.
           </p>
 
           <h3 id="security" className="wiki-heading-3">
@@ -703,6 +703,22 @@ export const DocsPage: React.FC<DocsPageProps> = ({
             <li id="ref-7">
               <a href="#security" className="wiki-backlink">^</a>
               Platform Security Operations (2026). "Automated Detection of Coordinated Voting Clusters and Sybil Nodes". <em>Platform Defense Review</em>.
+            </li>
+            <li id="ref-8">
+              <a href="#voting" className="wiki-backlink">^</a>
+              de Borda, Jean-Charles (1781). "Mémoire sur les élections au scrutin". <em>Histoire de l'Académie Royale des Sciences</em>. Paris: Imprimerie Royale.
+            </li>
+            <li id="ref-9">
+              <a href="#voting" className="wiki-backlink">^</a>
+              Saari, Donald G. (2000). "Mathematical Properties of Positional Voting Methods and the Borda Count". <em>Economic Theory</em>. 15 (1): 1-53. doi:10.1007/s001990050001.
+            </li>
+            <li id="ref-10">
+              <a href="#mathematics" className="wiki-backlink">^</a>
+              Young, H. Peyton (1974). "An axiomatization of Borda's rule". <em>Journal of Economic Theory</em>. 9 (1): 43-52. doi:10.1016/0022-0531(74)90073-8.
+            </li>
+            <li id="ref-11">
+              <a href="#mathematics" className="wiki-backlink">^</a>
+              Arrow, Kenneth J. (1951). <em>Social Choice and Individual Values</em>. Cowles Foundation Monograph No. 12. New York: John Wiley & Sons. ISBN 0-300-01364-7.
             </li>
           </ol>
         </section>
