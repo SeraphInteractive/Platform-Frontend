@@ -1119,6 +1119,10 @@ html, body {
 .btn-primary, .btn-dark {
   background: var(--accent-dark);
   color: #ffffff;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary:hover:not(:disabled), .btn-dark:hover:not(:disabled) {
@@ -4819,6 +4823,240 @@ select:focus {
   background: var(--text-muted);
   border-radius: 2px;
   opacity: 0.6;
+}
+
+/* Mobile Bottom Sheet Dialogs & Touch Ergonomics */
+.modal-drag-pill {
+  display: none;
+}
+
+.modal-sheet-mobile {
+  position: relative;
+  max-width: 580px;
+  width: 100%;
+}
+
+.modal-dialog-desktop {
+  margin: auto;
+  max-width: 580px;
+  align-self: center;
+}
+
+.modal-actions-stacked {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.slot-clear-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.slot-reorder-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--bg-card-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  padding: 0;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.slot-reorder-btn:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+
+.modal-close-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+}
+
+.tap-rank-chip {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--bg-card-muted);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.tap-rank-chip.active-rank-1 {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.tap-rank-chip.active-rank-2 {
+  background: rgba(148, 163, 184, 0.15);
+  border-color: var(--accent-silver);
+  color: var(--accent-silver);
+}
+
+.tap-rank-chip.active-rank-3 {
+  background: rgba(217, 119, 6, 0.15);
+  border-color: var(--accent-bronze);
+  color: var(--accent-bronze);
+}
+
+.thought-bubble-trigger {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.btn-moderation {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tap-chips-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-trigger-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slot-card-title {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.docs-page-layout {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 24px;
+}
+
+.settings-page-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+
+.settings-nav-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.progress-timeline-track {
+  display: flex;
+  gap: 16px;
+}
+
+.wiki-infobox {
+  max-width: 300px;
+}
+
+@media (max-width: 767px) {
+  .modal-drag-pill {
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: var(--border-strong);
+    border-radius: 2px;
+    margin: 0 auto 16px auto;
+    cursor: grab;
+  }
+
+  .modal-sheet-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    max-height: 85vh;
+    overflow-y: auto;
+    align-self: flex-end;
+    margin: 0;
+    box-sizing: border-box;
+  }
+
+  .modal-actions-stacked {
+    flex-direction: column-reverse;
+    width: 100%;
+  }
+
+  .modal-actions-stacked .btn {
+    width: 100%;
+  }
+
+  .docs-page-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-nav-tabs {
+    overflow-x: auto;
+    flex-wrap: wrap;
+  }
+
+  .progress-timeline-track {
+    overflow-x: auto;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .wiki-infobox {
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .modal-dialog-desktop {
+    margin: auto;
+    max-width: 580px;
+    align-self: center;
+  }
 }
 
 

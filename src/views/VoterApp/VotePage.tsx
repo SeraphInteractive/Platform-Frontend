@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { VotingEntry, VotingRound, StoredBallotRecord, getSubmitterAvatar } from '../../hooks/useVotingApi.ts';
 import { validate_ballot, Ballot } from '@platform/internal-logic';
 import { useAuth } from '../../context/AuthContext.tsx';
+import { sounds } from '../../utils/soundEffects.ts';
 
 interface VotePageProps {
   activeRound?: VotingRound;
@@ -39,8 +40,6 @@ export const VotePage: React.FC<VotePageProps> = ({
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
 
   const [isDragOverPool, setIsDragOverPool] = useState(false);
-
-
 
   const rollerRef = useRef<HTMLDivElement>(null);
 
@@ -114,6 +113,7 @@ export const VotePage: React.FC<VotePageProps> = ({
     setDragOverSlot(null);
     const entryId = e.dataTransfer.getData('text/plain') || draggedId;
     if (entryId) {
+      sounds.playPop();
       onSelectRank(slotNum, entryId);
       setDraggedId(null);
     }
@@ -138,6 +138,7 @@ export const VotePage: React.FC<VotePageProps> = ({
     const entryId = e.dataTransfer.getData('text/plain') || draggedId;
     if (!entryId) return;
 
+    sounds.playReset();
     if (rank1 === entryId) {
       onClearSlot(1);
     } else if (rank2 === entryId) {
@@ -149,17 +150,33 @@ export const VotePage: React.FC<VotePageProps> = ({
   };
 
   const handleSlotClick = (slotNum: 1 | 2 | 3, entryId: string) => {
+    sounds.playPop();
     onSelectRank(slotNum, entryId);
   };
 
   const handleClear = (slotNum: 1 | 2 | 3) => {
+    sounds.playReset();
     onClearSlot(slotNum);
+  };
+
+  const handleReorderRank = (sourceRank: 1 | 2 | 3, targetRank: 1 | 2 | 3) => {
+    sounds.playPop();
+    const srcId = sourceRank === 1 ? rank1 : sourceRank === 2 ? rank2 : rank3;
+    const tgtId = targetRank === 1 ? rank1 : targetRank === 2 ? rank2 : rank3;
+    if (!srcId) return;
+    onSelectRank(targetRank, srcId);
+    if (tgtId) {
+      onSelectRank(sourceRank, tgtId);
+    }
   };
 
   const handleCast = () => {
     if (!isAuthenticated) {
       loginWithDiscord();
       return;
+    }
+    if (validation.isValid) {
+      sounds.playLevelUp();
     }
     onSubmitBallot();
   };
@@ -350,25 +367,40 @@ export const VotePage: React.FC<VotePageProps> = ({
               </div>
 
               {/* Quick Slot Action Buttons inside Detail View */}
-              <div style={{ display: 'flex', gap: 10, borderTop: '1px solid var(--border-subtle)', paddingTop: 14, marginTop: 'auto' }}>
+              <div className="tap-chips-group" style={{ display: 'flex', gap: 10, borderTop: '1px solid var(--border-subtle)', paddingTop: 14, marginTop: 'auto' }}>
                 <button
-                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  className={`btn btn-secondary btn-sm tap-rank-chip rank-chip-1 ${rank1 === selectedEntry.id ? 'active-rank-1' : ''}`}
                   style={{ flex: 1, borderColor: rank1 === selectedEntry.id ? 'var(--accent-gold)' : undefined }}
-                  onClick={() => handleSlotClick(1, selectedEntry.id)}
+                  aria-label={`Rank 1st ${selectedEntry.title}`}
+                  onClick={() => {
+                    sounds.playPop();
+                    handleSlotClick(1, selectedEntry.id);
+                  }}
                 >
                   Slot 1st (3p)
                 </button>
                 <button
-                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  className={`btn btn-secondary btn-sm tap-rank-chip rank-chip-2 ${rank2 === selectedEntry.id ? 'active-rank-2' : ''}`}
                   style={{ flex: 1, borderColor: rank2 === selectedEntry.id ? 'var(--accent-silver)' : undefined }}
-                  onClick={() => handleSlotClick(2, selectedEntry.id)}
+                  aria-label={`Rank 2nd ${selectedEntry.title}`}
+                  onClick={() => {
+                    sounds.playPop();
+                    handleSlotClick(2, selectedEntry.id);
+                  }}
                 >
                   Slot 2nd (2p)
                 </button>
                 <button
-                  className="btn btn-secondary btn-sm"
+                  type="button"
+                  className={`btn btn-secondary btn-sm tap-rank-chip rank-chip-3 ${rank3 === selectedEntry.id ? 'active-rank-3' : ''}`}
                   style={{ flex: 1, borderColor: rank3 === selectedEntry.id ? 'var(--accent-bronze)' : undefined }}
-                  onClick={() => handleSlotClick(3, selectedEntry.id)}
+                  aria-label={`Rank 3rd ${selectedEntry.title}`}
+                  onClick={() => {
+                    sounds.playPop();
+                    handleSlotClick(3, selectedEntry.id);
+                  }}
                 >
                   Slot 3rd (1p)
                 </button>
@@ -458,20 +490,70 @@ export const VotePage: React.FC<VotePageProps> = ({
                               {entry.description}
                             </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 4 }}>
-                              <div className="submitter-avatar-chip">
-                                <img
-                                  src={getSubmitterAvatar(entry.submitterUsername, entry.submitterAvatar)}
-                                  alt={entry.submitterUsername || 'Creator'}
-                                  className="submitter-avatar-img"
-                                />
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                                  By {entry.submitterUsername || 'Creator'}
-                                </span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 6, flexWrap: 'wrap', gap: 8 }}>
+                              <div className="tap-chips-group">
+                                <button
+                                  type="button"
+                                  className={`tap-rank-chip rank-chip-1 ${isRank1 ? 'active-rank-1' : ''}`}
+                                  aria-label={`Rank 1st ${entry.title}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    sounds.playPop();
+                                    onSelectRank(1, entry.id);
+                                  }}
+                                >
+                                  1st
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`tap-rank-chip rank-chip-2 ${isRank2 ? 'active-rank-2' : ''}`}
+                                  aria-label={`Rank 2nd ${entry.title}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    sounds.playPop();
+                                    onSelectRank(2, entry.id);
+                                  }}
+                                >
+                                  2nd
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`tap-rank-chip rank-chip-3 ${isRank3 ? 'active-rank-3' : ''}`}
+                                  aria-label={`Rank 3rd ${entry.title}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    sounds.playPop();
+                                    onSelectRank(3, entry.id);
+                                  }}
+                                >
+                                  3rd
+                                </button>
                               </div>
-                              <span style={{ fontSize: '11px', color: 'var(--accent-blue)', fontWeight: 700 }}>
-                                Inspect
-                              </span>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div className="submitter-avatar-chip">
+                                  <img
+                                    src={getSubmitterAvatar(entry.submitterUsername, entry.submitterAvatar)}
+                                    alt={entry.submitterUsername || 'Creator'}
+                                    className="submitter-avatar-img"
+                                  />
+                                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                    By {entry.submitterUsername || 'Creator'}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="thought-bubble-trigger"
+                                  aria-label={`Inspect ${entry.title}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedEntryId(entry.id);
+                                  }}
+                                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--accent-blue)', fontWeight: 700, fontSize: '11px' }}
+                                >
+                                  Inspect
+                                </button>
+                              </div>
                             </div>
                           </div>
 
@@ -529,16 +611,35 @@ export const VotePage: React.FC<VotePageProps> = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="slot-badge slot-rank-1">1ST CHOICE (3 PTS)</span>
               {rank1 && (
-                <button className="btn btn-secondary btn-sm" style={{ padding: '2px 8px', fontSize: '11px' }} onClick={() => handleClear(1)}>
-                  Clear
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="slot-reorder-btn"
+                    aria-label="Move rank 1 down to rank 2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReorderRank(1, 2);
+                    }}
+                    title="Move down"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm slot-clear-btn"
+                    style={{ padding: '2px 8px', fontSize: '11px' }}
+                    onClick={() => handleClear(1)}
+                  >
+                    Clear
+                  </button>
+                </div>
               )}
             </div>
 
             {rank1 && getEntry(rank1) ? (
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 6 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
+                  <div className="slot-card-title" style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
                     {getEntry(rank1)?.title || rank1}
                   </div>
                   <div className="submitter-avatar-chip" style={{ marginTop: 4 }}>
@@ -581,16 +682,47 @@ export const VotePage: React.FC<VotePageProps> = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="slot-badge slot-rank-2">2ND CHOICE (2 PTS)</span>
               {rank2 && (
-                <button className="btn btn-secondary btn-sm" style={{ padding: '2px 8px', fontSize: '11px' }} onClick={() => handleClear(2)}>
-                  Clear
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button
+                    type="button"
+                    className="slot-reorder-btn"
+                    aria-label="Move rank 2 up to rank 1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReorderRank(2, 1);
+                    }}
+                    title="Move up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    className="slot-reorder-btn"
+                    aria-label="Move rank 2 down to rank 3"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReorderRank(2, 3);
+                    }}
+                    title="Move down"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm slot-clear-btn"
+                    style={{ padding: '2px 8px', fontSize: '11px' }}
+                    onClick={() => handleClear(2)}
+                  >
+                    Clear
+                  </button>
+                </div>
               )}
             </div>
 
             {rank2 && getEntry(rank2) ? (
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 6 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
+                  <div className="slot-card-title" style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
                     {getEntry(rank2)?.title || rank2}
                   </div>
                   <div className="submitter-avatar-chip" style={{ marginTop: 4 }}>
@@ -633,16 +765,35 @@ export const VotePage: React.FC<VotePageProps> = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="slot-badge slot-rank-3">3RD CHOICE (1 PT)</span>
               {rank3 && (
-                <button className="btn btn-secondary btn-sm" style={{ padding: '2px 8px', fontSize: '11px' }} onClick={() => handleClear(3)}>
-                  Clear
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    className="slot-reorder-btn"
+                    aria-label="Move rank 3 up to rank 2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReorderRank(3, 2);
+                    }}
+                    title="Move up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm slot-clear-btn"
+                    style={{ padding: '2px 8px', fontSize: '11px' }}
+                    onClick={() => handleClear(3)}
+                  >
+                    Clear
+                  </button>
+                </div>
               )}
             </div>
 
             {rank3 && getEntry(rank3) ? (
               <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 6 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
+                  <div className="slot-card-title" style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
                     {getEntry(rank3)?.title || rank3}
                   </div>
                   <div className="submitter-avatar-chip" style={{ marginTop: 4 }}>
@@ -693,7 +844,8 @@ export const VotePage: React.FC<VotePageProps> = ({
 
             {!isAuthenticated ? (
               <button
-                className="btn btn-primary"
+                type="button"
+                className="btn btn-primary cast-ballot-btn"
                 onClick={loginWithDiscord}
                 style={{ padding: '10px 22px', fontSize: '13px', background: '#5865F2', borderColor: '#5865F2' }}
               >
@@ -701,12 +853,13 @@ export const VotePage: React.FC<VotePageProps> = ({
               </button>
             ) : (
               <button
-                className="btn btn-primary"
+                type="button"
+                className="btn btn-primary cast-ballot-btn"
                 disabled={!validation.isValid || isSubmitting || isBarred}
                 onClick={handleCast}
                 style={{ padding: '10px 28px', fontSize: '13px' }}
               >
-                {isBarred ? 'Restricted' : isSubmitting ? 'Recording...' : myBallot ? 'Update Vote' : 'Cast Vote'}
+                {isBarred ? 'Restricted' : isSubmitting ? 'Recording...' : myBallot ? 'Update Ballot' : 'Cast Ballot'}
               </button>
             )}
           </div>

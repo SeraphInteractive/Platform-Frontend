@@ -23,7 +23,6 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
   const { isBarred, isAuthenticated, loginWithDiscord } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [isVideo, setIsVideo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,16 +50,13 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
     setIsVideo(isVid);
 
     if (isVid) {
-      setMediaFile(file);
       setMediaPreview(URL.createObjectURL(file));
     } else {
       try {
         const compressed = await compressImageToWebP(file, 1920, 1080, 0.85);
-        setMediaFile(compressed.file);
         setMediaPreview(compressed.dataUrl);
       } catch {
         // Fallback to uncompressed file if canvas fails
-        setMediaFile(file);
         setMediaPreview(URL.createObjectURL(file));
       }
     }
@@ -68,7 +64,9 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
 
   const handleRemoveMedia = () => {
     sounds.playReset();
-    setMediaFile(null);
+    if (mediaPreview && mediaPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(mediaPreview);
+    }
     setMediaPreview(null);
     setIsVideo(false);
     if (fileInputRef.current) {
@@ -103,50 +101,25 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
       return;
     }
 
-    setIsUploading(true);
-    let uploadedMediaUrl: string | undefined = undefined;
-
     try {
-      // If a media file was attached, upload it first
-      if (mediaFile) {
-        const formData = new FormData();
-        formData.append('file', mediaFile);
-        
-        try {
-          const uploadRes = await fetch('/api/v1/uploads', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include',
-          });
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            uploadedMediaUrl = uploadData.data?.url;
-          }
-        } catch {
-          // Fallback to local object preview if upload endpoint is unreachable
-          uploadedMediaUrl = mediaPreview || undefined;
-        }
-      }
-
-      const created = await submitMutation.mutateAsync({
+      setIsUploading(true);
+      setError(null);
+      const res = await submitMutation.mutateAsync({
         title: title.trim(),
         description: description.trim(),
-        mediaUrl: uploadedMediaUrl,
+        mediaUrl: mediaPreview || undefined,
       });
 
       sounds.playLevelUp();
       setTitle('');
       setDescription('');
-      setMediaFile(null);
-      setMediaPreview(null);
-      setError(null);
+      handleRemoveMedia();
       onClose();
 
-      if (onCreated && created?.id) {
-        onCreated(created.id);
+      if (onCreated && res?.id) {
+        onCreated(res.id);
       }
     } catch (err: unknown) {
-      sounds.playReset();
       setError(err instanceof Error ? err.message : 'Failed to submit proposal');
     } finally {
       setIsUploading(false);
@@ -158,6 +131,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
 
   return (
     <div
+      className="modal-backdrop modal-overlay"
       style={{
         position: 'fixed',
         inset: 0,
@@ -172,17 +146,16 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="white-card"
+        className="white-card modal-sheet-mobile modal-dialog-desktop"
         style={{
           maxWidth: 560,
           width: '100%',
           boxShadow: '0 24px 60px rgba(0, 0, 0, 0.35)',
           padding: '28px',
-          maxHeight: '90vh',
-          overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="modal-drag-pill" />
         <div className="card-header" style={{ marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-green)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
@@ -193,8 +166,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
             </div>
           </div>
           <button
-            className="icon-btn"
-            style={{ width: 30, height: 30 }}
+            className="icon-btn modal-close-btn"
             onClick={() => {
               sounds.playReset();
               onClose();
@@ -378,7 +350,7 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+          <div className="modal-actions-stacked" style={{ marginTop: 4 }}>
             <button
               type="button"
               className="btn btn-secondary"

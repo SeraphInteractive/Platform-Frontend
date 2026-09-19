@@ -411,7 +411,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
             return (
               <>
-                <div className="table-responsive" style={{ width: '100%', overflowX: 'auto' }}>
+                <div className="table-responsive table-wrap" style={{ width: '100%', overflowX: 'auto' }}>
                   <table className="table" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'auto' }}>
                     <thead>
                       <tr>
@@ -501,7 +501,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
                               <td style={{ textAlign: 'right' }}>
                                 <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                                   <button
-                                    className="btn btn-secondary btn-sm"
+                                    className="btn btn-secondary btn-sm btn-moderation"
                                     style={{ fontSize: '11px', padding: '3px 8px' }}
                                     onClick={() => setInspectedEntry(entry)}
                                   >
@@ -510,7 +510,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
                                   {!isApproved && (
                                     <button
-                                      className="btn btn-secondary btn-sm"
+                                      className="btn btn-secondary btn-sm btn-moderation"
                                       style={{ fontSize: '11px', padding: '3px 8px', color: '#10b981' }}
                                       onClick={() => handleUpdateStatus(entry.id, 'approved')}
                                     >
@@ -520,7 +520,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
                                   {!isFlagged && (
                                     <button
-                                      className="btn btn-secondary btn-sm"
+                                      className="btn btn-secondary btn-sm btn-moderation"
                                       style={{ fontSize: '11px', padding: '3px 8px', color: '#f59e0b' }}
                                       onClick={() => handleUpdateStatus(entry.id, 'flagged')}
                                     >
@@ -530,7 +530,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
                                   {!isRejected && (
                                     <button
-                                      className="btn btn-secondary btn-sm"
+                                      className="btn btn-secondary btn-sm btn-moderation"
                                       style={{ fontSize: '11px', padding: '3px 8px', color: '#ef4444' }}
                                       onClick={() => handleUpdateStatus(entry.id, 'rejected')}
                                     >
@@ -540,7 +540,7 @@ export const DevWorkbench: React.FC<DevWorkbenchProps> = ({
 
                                   {canElevateAdmin && (
                                     <button
-                                      className="btn btn-secondary btn-sm"
+                                      className="btn btn-secondary btn-sm btn-moderation"
                                       style={{ fontSize: '11px', padding: '3px 8px', color: '#ef4444' }}
                                       onClick={() => handleDeleteEntry(entry.id)}
                                       title="Delete Proposal (Administrator/Supervisor)"

@@ -73,7 +73,7 @@ export const CreateRoundModal: React.FC<CreateRoundModalProps> = ({
       onClick={onClose}
     >
       <div
-        className="white-card"
+        className="white-card modal-sheet-mobile modal-dialog-desktop"
         style={{
           maxWidth: 520,
           width: '100%',
@@ -81,6 +81,7 @@ export const CreateRoundModal: React.FC<CreateRoundModalProps> = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="modal-drag-pill" />
         <div className="card-header" style={{ marginBottom: 12 }}>
           <div>
             <div className="card-title" style={{ fontSize: '16px' }}>
@@ -91,8 +92,7 @@ export const CreateRoundModal: React.FC<CreateRoundModalProps> = ({
             </div>
           </div>
           <button
-            className="icon-btn"
-            style={{ width: 30, height: 30 }}
+            className="icon-btn modal-close-btn"
             onClick={onClose}
             title="Close modal"
           >
@@ -124,22 +124,22 @@ export const CreateRoundModal: React.FC<CreateRoundModalProps> = ({
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="form-group">
               <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-main)' }}>
-                Category
+                Creative Track
               </label>
               <select
                 className="select-field"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               >
-                <option value="Narrative">Narrative</option>
-                <option value="Characters">Characters</option>
-                <option value="Cinematics">Cinematics</option>
-                <option value="Worldbuilding">Worldbuilding</option>
-                <option value="Mechanics">Mechanics</option>
-                <option value="General">General</option>
+                <option value="Story">Story & Narrative</option>
+                <option value="Art">Art & Style</option>
+                <option value="Builds">Builds & Sets</option>
+                <option value="Audio">Audio & Voice</option>
+                <option value="Animation">Animation & Scene</option>
+                <option value="General">General Milestone</option>
               </select>
             </div>
 
@@ -172,7 +172,7 @@ export const CreateRoundModal: React.FC<CreateRoundModalProps> = ({
             />
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+          <div className="modal-actions-stacked" style={{ marginTop: 8 }}>
             <button type="button" className="btn btn-secondary" onClick={onClose}>
               Cancel
             </button>

@@ -156,58 +156,60 @@ export const DocsPage: React.FC<DocsPageProps> = ({
             </div>
           </div>
 
-          <table className="wiki-infobox-table">
-            <tbody>
-              <tr>
-                <th>Directed by</th>
-                <td>Community Consensus, Department Supervisors</td>
-              </tr>
-              <tr>
-                <th>Written by</th>
-                <td>Open Community Submissions</td>
-              </tr>
-              <tr>
-                <th>Produced by</th>
-                <td>Seraph Interactive, Community Balloteers</td>
-              </tr>
-              <tr>
-                <th>Production model</th>
-                <td>Decentralized Democratic Consensus</td>
-              </tr>
-              <tr>
-                <th>Voting mechanism</th>
-                <td>3-2-1 Ranked Borda Count</td>
-              </tr>
-              <tr>
-                <th>Creative tracks</th>
-                <td>5 (Story, Art, Builds, Audio, Animation)</td>
-              </tr>
-              <tr>
-                <th>Production phases</th>
-                <td>4 (17 sequential milestones)</td>
-              </tr>
-              <tr>
-                <th>Primary software</th>
-                <td>Blender, Minecraft Java Edition, Blockbench</td>
-              </tr>
-              <tr>
-                <th>Asset distribution</th>
-                <td>GrabBox Task Ingestion</td>
-              </tr>
-              <tr>
-                <th>License</th>
-                <td>Creative Commons CC-BY-SA 4.0</td>
-              </tr>
-              <tr>
-                <th>Status</th>
-                <td>Active Production (Pre-Vis and Layout)</td>
-              </tr>
-              <tr>
-                <th>Official portal</th>
-                <td><a href="#overview" className="wiki-link">Platform Portal</a></td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="wiki-infobox-table">
+              <tbody>
+                <tr>
+                  <th>Directed by</th>
+                  <td>Community Consensus, Department Supervisors</td>
+                </tr>
+                <tr>
+                  <th>Written by</th>
+                  <td>Open Community Submissions</td>
+                </tr>
+                <tr>
+                  <th>Produced by</th>
+                  <td>Seraph Interactive, Community Balloteers</td>
+                </tr>
+                <tr>
+                  <th>Production model</th>
+                  <td>Decentralized Democratic Consensus</td>
+                </tr>
+                <tr>
+                  <th>Voting mechanism</th>
+                  <td>3-2-1 Ranked Borda Count</td>
+                </tr>
+                <tr>
+                  <th>Creative tracks</th>
+                  <td>5 (Story, Art, Builds, Audio, Animation)</td>
+                </tr>
+                <tr>
+                  <th>Production phases</th>
+                  <td>4 (17 sequential milestones)</td>
+                </tr>
+                <tr>
+                  <th>Primary software</th>
+                  <td>Blender, Minecraft Java Edition, Blockbench</td>
+                </tr>
+                <tr>
+                  <th>Asset distribution</th>
+                  <td>GrabBox Task Ingestion</td>
+                </tr>
+                <tr>
+                  <th>License</th>
+                  <td>Creative Commons CC-BY-SA 4.0</td>
+                </tr>
+                <tr>
+                  <th>Status</th>
+                  <td>Active Production (Pre-Vis and Layout)</td>
+                </tr>
+                <tr>
+                  <th>Official portal</th>
+                  <td><a href="#overview" className="wiki-link">Platform Portal</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </aside>
 
         {/* Lead Section */}
@@ -404,32 +406,34 @@ export const DocsPage: React.FC<DocsPageProps> = ({
             The platform utilizes a modified Borda count system designated as the 3-2-1 Ranked Ballot. Each participating voter evaluates all eligible proposals within a track and designates their top three preferences in ordinal rank:
           </p>
 
-          <table className="wikitable">
-            <thead>
-              <tr>
-                <th>Preference Rank</th>
-                <th>Point Value</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>First Preference</strong></td>
-                <td>3 points</td>
-                <td>Assigned to the voter's primary choice.</td>
-              </tr>
-              <tr>
-                <td><strong>Second Preference</strong></td>
-                <td>2 points</td>
-                <td>Assigned to the voter's secondary choice.</td>
-              </tr>
-              <tr>
-                <td><strong>Third Preference</strong></td>
-                <td>1 point</td>
-                <td>Assigned to the voter's tertiary choice.</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="wikitable">
+              <thead>
+                <tr>
+                  <th>Preference Rank</th>
+                  <th>Point Value</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>First Preference</strong></td>
+                  <td>3 points</td>
+                  <td>Assigned to the voter's primary choice.</td>
+                </tr>
+                <tr>
+                  <td><strong>Second Preference</strong></td>
+                  <td>2 points</td>
+                  <td>Assigned to the voter's secondary choice.</td>
+                </tr>
+                <tr>
+                  <td><strong>Third Preference</strong></td>
+                  <td>1 point</td>
+                  <td>Assigned to the voter's tertiary choice.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
           <p>
             The cumulative score <em>S<sub>i</sub></em> for any candidate proposal <em>i</em> across <em>N</em> submitted ballots is calculated using the linear positional scoring function<sup className="wiki-citation"><a href="#ref-3">[3]</a></sup><sup className="wiki-citation"><a href="#ref-8">[8]</a></sup>:
@@ -543,42 +547,44 @@ export const DocsPage: React.FC<DocsPageProps> = ({
             The production roadmap is organized into four sequential phases encompassing seventeen structured milestones<sup className="wiki-citation"><a href="#ref-2">[2]</a></sup>:
           </p>
 
-          <table className="wikitable">
-            <thead>
-              <tr>
-                <th>Phase</th>
-                <th>Milestones Included</th>
-                <th>Key Deliverables</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr id="phase-1">
-                <td><strong>Phase 1: Writing</strong></td>
-                <td>Milestones 1 to 4</td>
-                <td>Premise brainstorm, plot treatments, screenplay drafts, and table read sign-off.</td>
-                <td>Completed</td>
-              </tr>
-              <tr id="phase-2">
-                <td><strong>Phase 2: Pre-Vis</strong></td>
-                <td>Milestones 5 to 8</td>
-                <td>Concept visual keys, set schematics, voice actor recordings, and 2D/3D animatics.</td>
-                <td>In Progress</td>
-              </tr>
-              <tr id="phase-3">
-                <td><strong>Phase 3: Production</strong></td>
-                <td>Milestones 9 to 13</td>
-                <td>Character rigging, world set import, layout blocking, animation, and GPU rendering.</td>
-                <td>Scheduled</td>
-              </tr>
-              <tr id="phase-4">
-                <td><strong>Phase 4: Post-Production</strong></td>
-                <td>Milestones 14 to 17</td>
-                <td>Visual effects (VFX), foley sound design, original score (OST), and final master delivery.</td>
-                <td>Scheduled</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="table-wrap">
+            <table className="wikitable">
+              <thead>
+                <tr>
+                  <th>Phase</th>
+                  <th>Milestones Included</th>
+                  <th>Key Deliverables</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr id="phase-1">
+                  <td><strong>Phase 1: Writing</strong></td>
+                  <td>Milestones 1 to 4</td>
+                  <td>Premise brainstorm, plot treatments, screenplay drafts, and table read sign-off.</td>
+                  <td>Completed</td>
+                </tr>
+                <tr id="phase-2">
+                  <td><strong>Phase 2: Pre-Vis</strong></td>
+                  <td>Milestones 5 to 8</td>
+                  <td>Concept visual keys, set schematics, voice actor recordings, and 2D/3D animatics.</td>
+                  <td>In Progress</td>
+                </tr>
+                <tr id="phase-3">
+                  <td><strong>Phase 3: Production</strong></td>
+                  <td>Milestones 9 to 13</td>
+                  <td>Character rigging, world set import, layout blocking, animation, and GPU rendering.</td>
+                  <td>Scheduled</td>
+                </tr>
+                <tr id="phase-4">
+                  <td><strong>Phase 4: Post-Production</strong></td>
+                  <td>Milestones 14 to 17</td>
+                  <td>Visual effects (VFX), foley sound design, original score (OST), and final master delivery.</td>
+                  <td>Scheduled</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         {/* Section 5: GrabBox */}
@@ -613,22 +619,42 @@ export const DocsPage: React.FC<DocsPageProps> = ({
             <a href="#roles" className="wiki-edit-link">[edit]</a>
           </h2>
           <p>
-            Participation in <em>Project Stairway</em> is stratified into four functional roles:
+            Participation in <em>Project Stairway</em> is stratified into four functional tiers:
           </p>
-          <ul style={{ paddingLeft: 24, margin: '12px 0' }}>
-            <li>
-              <strong>Creative Directors:</strong> Project stewards responsible for overall production scheduling, cross-department coordination, and milestone sign-offs.
-            </li>
-            <li>
-              <strong>Track Supervisors:</strong> Experienced department leads in story, art, voxel modeling, audio engineering, and animation who review community pitches and validate GrabBox submissions.
-            </li>
-            <li>
-              <strong>Community Contributors:</strong> Animators, 3D artists, voice actors, writers, and musicians who create content, submit proposals, and complete scene tasks.
-            </li>
-            <li>
-              <strong>Community Balloteers:</strong> Registered community members who vote in periodic consensus rounds to determine film canon and select proposals.
-            </li>
-          </ul>
+
+          <div className="table-wrap">
+            <table className="wikitable">
+              <thead>
+                <tr>
+                  <th>Tier &amp; Role</th>
+                  <th>Primary Responsibilities</th>
+                  <th>Access Tier</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Administrator</strong></td>
+                  <td>Full round lifecycle management, database administration, and role assignments.</td>
+                  <td>Admin (Tier 5)</td>
+                </tr>
+                <tr>
+                  <td><strong>Department Supervisor</strong></td>
+                  <td>Track-specific creative approvals, GrabBox scene sign-offs, and quality review.</td>
+                  <td>Supervisor (Tier 4)</td>
+                </tr>
+                <tr>
+                  <td><strong>Moderator</strong></td>
+                  <td>Content review, AI detector validation, anomaly audits, and user safety.</td>
+                  <td>Moderator (Tier 4)</td>
+                </tr>
+                <tr>
+                  <td><strong>Contributor / Balloteer</strong></td>
+                  <td>Community proposals, GrabBox shot tasks, and 3-2-1 ranked consensus voting.</td>
+                  <td>Community (Tier 1-3)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         {/* Section 7: Guidelines & Safety */}
