@@ -221,7 +221,13 @@ export const CreatePitchModal: React.FC<CreatePitchModalProps> = ({
             lineHeight: 1.5,
           }}
         >
-          <strong style={{ color: 'var(--text-main)' }}>Supervisor Review Queue:</strong> New proposals undergo review at the Supervisor Desk before entering the active voting pool.
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: '10px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(88, 101, 242, 0.15)', color: '#5865F2', textTransform: 'uppercase' }}>
+              Discord Role Perk
+            </span>
+            <span style={{ color: 'var(--text-main)', fontWeight: 700 }}>Auto-Granted Contributor Role</span>
+          </div>
+          <div>Submitting a proposal automatically unlocks the <strong>Contributor</strong> role in the Discord server and queues your concept at the Supervisor Desk.</div>
         </div>
 
         {!isAuthenticated && (

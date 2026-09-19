@@ -146,7 +146,7 @@ export const Footer: React.FC<FooterProps> = ({
             </li>
             <li>
               <a
-                href="https://discord.com"
+                href="https://discord.gg/xwetf5cg6c"
                 target="_blank"
                 rel="noreferrer"
                 style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
