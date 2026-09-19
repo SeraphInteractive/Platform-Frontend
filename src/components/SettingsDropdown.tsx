@@ -45,7 +45,7 @@ export const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
     <>
       <div className="account-popover-backdrop" onClick={onClose} aria-hidden="true" />
       <div
-        className="account-overview-popover"
+        className="account-overview-popover settings-dropdown-popover"
         role="dialog"
         aria-modal="true"
         aria-label="Account Overview"

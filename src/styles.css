@@ -902,7 +902,8 @@ html, body {
   padding: 6px 14px;
 }
 
-.account-overview-popover {
+.account-overview-popover,
+.settings-dropdown-popover {
   position: absolute;
   top: 52px;
   right: 0;

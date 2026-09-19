@@ -79,7 +79,6 @@ interface TrackShowcaseProps {
 
 export const TrackShowcase: React.FC<TrackShowcaseProps> = ({
   onNavigateDocs,
-  onOpenCreatePitch,
 }) => {
   return (
     <>
@@ -89,7 +88,12 @@ export const TrackShowcase: React.FC<TrackShowcaseProps> = ({
         const cardClass = `landing-showcase-card ${isEven ? '' : 'reverse'} ${revealClass}`;
 
         return (
-          <section key={t.id} className={cardClass}>
+          <section
+            key={t.id}
+            className={cardClass}
+            style={{ cursor: onNavigateDocs ? 'pointer' : 'default' }}
+            onClick={() => onNavigateDocs?.(t.docSection)}
+          >
             {isEven ? (
               <>
                 <div className="landing-art-container">
@@ -110,7 +114,7 @@ export const TrackShowcase: React.FC<TrackShowcaseProps> = ({
                   <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     {t.description}
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                     {t.highlights.map((h) => (
                       <span
                         key={h}
@@ -119,29 +123,13 @@ export const TrackShowcase: React.FC<TrackShowcaseProps> = ({
                           color: 'var(--text-main)',
                           fontSize: '11px',
                           fontWeight: 700,
-                          padding: '3px 9px',
+                          padding: '4px 10px',
                           borderRadius: '6px',
                         }}
                       >
                         {h}
                       </span>
                     ))}
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '9px 18px', fontSize: '13px' }}
-                      onClick={() => onNavigateDocs?.(t.docSection)}
-                    >
-                      Track Guide
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      style={{ padding: '9px 18px', fontSize: '13px' }}
-                      onClick={onOpenCreatePitch}
-                    >
-                      + Submit Pitch
-                    </button>
                   </div>
                 </div>
               </>
@@ -158,7 +146,7 @@ export const TrackShowcase: React.FC<TrackShowcaseProps> = ({
                   <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                     {t.description}
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                     {t.highlights.map((h) => (
                       <span
                         key={h}
@@ -167,29 +155,13 @@ export const TrackShowcase: React.FC<TrackShowcaseProps> = ({
                           color: 'var(--text-main)',
                           fontSize: '11px',
                           fontWeight: 700,
-                          padding: '3px 9px',
+                          padding: '4px 10px',
                           borderRadius: '6px',
                         }}
                       >
                         {h}
                       </span>
                     ))}
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '9px 18px', fontSize: '13px' }}
-                      onClick={() => onNavigateDocs?.(t.docSection)}
-                    >
-                      Track Guide
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      style={{ padding: '9px 18px', fontSize: '13px' }}
-                      onClick={onOpenCreatePitch}
-                    >
-                      + Submit Pitch
-                    </button>
                   </div>
                 </div>
                 <div className="landing-art-container">

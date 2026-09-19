@@ -208,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {user ? (
             <div style={{ position: 'relative' }}>
               <button
-                className={`user-pfp-btn mobile-pfp-btn ${showAccountOverview ? 'active' : ''}`}
+                className={`user-pfp-btn mobile-pfp-btn settings-trigger-btn ${showAccountOverview ? 'active' : ''}`}
                 onClick={() => setShowAccountOverview(!showAccountOverview)}
                 aria-label="Account Overview"
               >
