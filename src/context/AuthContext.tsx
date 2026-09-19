@@ -70,6 +70,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
   warnings: number;
   isBarred: boolean;
+  authError: string | null;
+  clearAuthError: () => void;
   loginWithDiscord: () => void;
   setAuthToken: (token: string) => void;
   loginAsUser: (profile: UserProfile) => void;
@@ -114,19 +116,29 @@ const TRUSTED_MOD_ROLE_NAMES = new Set([
  * Automatically calculates user role based on Discord OAuth profile and server guild permissions
  */
 export function resolveDiscordRole(discordUser: Partial<UserProfile>): UserRole {
-  if (!discordUser.discordId) return 'user';
+  if (!discordUser) return 'user';
 
   // 1. Direct trusted Discord ID check
-  if (HARDCODED_ADMIN_DISCORD_IDS.has(discordUser.discordId)) {
+  if (discordUser.discordId && HARDCODED_ADMIN_DISCORD_IDS.has(discordUser.discordId)) {
     return 'admin';
   }
 
-  // 2. Discord server guild owner check
+  // 2. Direct database role assigned from backend (if admin/moderator/supervisor)
+  if (
+    discordUser.role &&
+    (discordUser.role === 'admin' ||
+      discordUser.role === 'moderator' ||
+      discordUser.role === 'supervisor')
+  ) {
+    return discordUser.role as UserRole;
+  }
+
+  // 3. Discord server guild owner check
   if (discordUser.guildPermissions?.isGuildOwner) {
     return 'admin';
   }
 
-  // 3. Discord bitwise permissions check
+  // 4. Discord bitwise permissions check
   const permBits = Number(discordUser.guildPermissions?.permissionBits || 0);
   if ((permBits & DISCORD_ADMIN_PERMISSION_FLAG) === DISCORD_ADMIN_PERMISSION_FLAG) {
     return 'admin';
@@ -138,7 +150,7 @@ export function resolveDiscordRole(discordUser: Partial<UserProfile>): UserRole 
     return 'moderator';
   }
 
-  // 4. Discord server assigned roles check
+  // 5. Discord server assigned roles check
   const userRoles = (discordUser.guildPermissions?.roles || []).map((r) => r.toLowerCase().trim());
   if (userRoles.some((r) => TRUSTED_ADMIN_ROLE_NAMES.has(r))) {
     return 'admin';
@@ -188,6 +200,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return 0;
   });
 
+  const [authError, setAuthError] = useState<string | null>(null);
+
   // Local cached authenticated session
   const [sessionUser, setSessionUser] = useState<UserProfile | null>(() => {
     if (typeof window !== 'undefined') {
@@ -207,18 +221,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return null;
   });
 
-  // Capture token from query param if returning from Discord OAuth redirect
+  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('mcs_logged_out') === 'true';
+    }
+    return false;
+  });
+
+  // Capture token or error from query param if returning from Discord OAuth redirect
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const queryToken = params.get('token');
+      const queryError = params.get('error') || params.get('error_description');
+
       if (queryToken) {
+        localStorage.removeItem('mcs_logged_out');
+        setIsLoggedOut(false);
         localStorage.setItem(TOKEN_KEY, queryToken);
         setToken(queryToken);
+        setAuthError(null);
         // Clean URL query string without reloading
         const cleanUrl = window.location.pathname + window.location.hash;
         window.history.replaceState({}, document.title, cleanUrl);
         queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      } else if (queryError) {
+        const errorDesc = params.get('error_description') || queryError;
+        console.error('Discord Auth Error from OAuth callback:', queryError, errorDesc);
+        setAuthError(decodeURIComponent(errorDesc));
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
       }
     }
   }, [queryClient]);
@@ -230,30 +262,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   } = useQuery({
     queryKey: ['auth', 'me', token],
     queryFn: async () => {
-      const res = await apiRequest<UserProfile>('/auth/me');
-      const resolvedRole = resolveDiscordRole(res);
-      const enriched = { ...res, role: resolvedRole };
-      localStorage.setItem(SESSION_USER_KEY, JSON.stringify(enriched));
-      setSessionUser(enriched);
-      return enriched;
+      try {
+        const res = await apiRequest<UserProfile>('/auth/me');
+        const resolvedRole = resolveDiscordRole(res);
+        const enriched = { ...res, role: resolvedRole };
+        localStorage.setItem(SESSION_USER_KEY, JSON.stringify(enriched));
+        setSessionUser(enriched);
+        return enriched;
+      } catch (err: any) {
+        if (err?.status === 401 || err?.status === 403) {
+          console.warn('Session token expired or revoked. Logging out.');
+          localStorage.removeItem(TOKEN_KEY);
+          localStorage.removeItem(SESSION_USER_KEY);
+          setToken(null);
+          setSessionUser(null);
+        }
+        throw err;
+      }
     },
     enabled: !!token,
     retry: false,
     staleTime: 1000 * 60 * 15,
   });
 
-  const [isLoggedOut, setIsLoggedOut] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('mcs_logged_out') === 'true';
-    }
-    return false;
-  });
+  const clearAuthError = () => {
+    setAuthError(null);
+  };
 
   const rawUser = apiUser || sessionUser;
   const isBarred = warnings >= 3;
 
-  // Standin studio supervisor dummy account only activates under local dev environments
-  const defaultFallbackUser = isLocalDevEnvironment() ? DEV_DEFAULT_USER : null;
+  // Standin studio supervisor dummy account only activates in local dev if not logged out and no token
+  const defaultFallbackUser = isLocalDevEnvironment() && !token ? DEV_DEFAULT_USER : null;
 
   const activeUser: UserProfile | null = isLoggedOut
     ? null
@@ -284,12 +324,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoggedOut(false);
     localStorage.setItem(TOKEN_KEY, newToken);
     setToken(newToken);
+    setAuthError(null);
     queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
   };
 
   const loginWithDiscord = () => {
     localStorage.removeItem('mcs_logged_out');
     setIsLoggedOut(false);
+    setAuthError(null);
     const rawBase = getApiBaseUrl().replace(/\/+$/, '');
     const cleanBase = rawBase.endsWith('/api/v1')
       ? rawBase
@@ -328,6 +370,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isAuthenticated: !!activeUser,
         warnings,
         isBarred,
+        authError,
+        clearAuthError,
         loginWithDiscord,
         setAuthToken,
         loginAsUser,

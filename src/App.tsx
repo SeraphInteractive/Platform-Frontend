@@ -61,7 +61,7 @@ const queryClient = new QueryClient({
 });
 
 const MainDashboardLayout: React.FC = () => {
-  const { user, isAuthenticated, loginWithDiscord } = useAuth();
+  const { user, isAuthenticated, authError, clearAuthError, loginWithDiscord } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTabId>('landing');
   const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTab>('account_info');
   const [docsSection, setDocsSection] = useState<DocsSectionId>('overview');
@@ -200,6 +200,49 @@ const MainDashboardLayout: React.FC = () => {
 
       {/* Main Content Area */}
       <main className={`dashboard-container ${isHomePage ? 'container-homepage' : 'container-sidebar'}`}>
+        {authError && (
+          <div
+            className="callout callout-danger"
+            style={{
+              margin: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              borderRadius: 10,
+              padding: '10px 16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '13px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span>Discord Sign-In Error: {authError}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '11px', padding: '3px 8px' }}
+                onClick={loginWithDiscord}
+              >
+                Retry Sign In
+              </button>
+              <button
+                className="icon-btn-sm"
+                onClick={clearAuthError}
+                aria-label="Dismiss Error"
+                style={{ width: 22, height: 22 }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
         <div key={activeTab} className={`page-view-wrapper ${isBallotPage ? 'page-non-scroll' : 'page-scrollable'}`}>
           {activeTab === 'landing' && (
             <LandingPage
