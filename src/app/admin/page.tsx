@@ -78,6 +78,8 @@ function getUserSpecialty(specs?: string[]): string {
 export default function AdminDashboardPage() {
   const queryClient = useQueryClient();
   const { isAdmin, isSupervisor, isLoading } = useAuth();
+  // block all data fetching until auth confirms staff access
+  const isAuthorized = !isLoading && (isAdmin || isSupervisor);
 
   const [activeTab, setActiveTab] = useState<AdminTab>("Reviews");
   const [selectedRoundId, setSelectedRoundId] = useState<string>("");
@@ -128,7 +130,8 @@ export default function AdminDashboardPage() {
   const { data: pipelineData } = useQuery({
     queryKey: ["pipeline-progress"],
     queryFn: fetchPipelineProgress,
-    staleTime: 10_000
+    staleTime: 10_000,
+    enabled: isAuthorized
   });
 
   useEffect(() => {
@@ -142,7 +145,8 @@ export default function AdminDashboardPage() {
 
   const { data: roundsData, isLoading: roundsLoading } = useQuery({
     queryKey: ["rounds"],
-    queryFn: fetchRounds
+    queryFn: fetchRounds,
+    enabled: isAuthorized
   });
 
   const rounds = roundsData?.data || [];
@@ -151,21 +155,23 @@ export default function AdminDashboardPage() {
   const { data: pendingEntriesData, isLoading: pendingLoading } = useQuery({
     queryKey: ["admin-entries", activeRoundId, entryStatusFilter],
     queryFn: () => fetchRoundEntries(activeRoundId, entryStatusFilter === "all" ? undefined : entryStatusFilter),
-    enabled: Boolean(activeRoundId)
+    enabled: isAuthorized && Boolean(activeRoundId)
   });
 
   const pendingEntries = pendingEntriesData?.data || [];
 
   const { data: queueData, isLoading: queueLoading } = useQuery({
     queryKey: ["review-queue"],
-    queryFn: fetchReviewQueue
+    queryFn: fetchReviewQueue,
+    enabled: isAuthorized
   });
 
   const reviewQueue = (queueData?.data || []) as ReviewQueueItem[];
 
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ["users", roleFilter, userPage],
-    queryFn: () => fetchUsers(roleFilter === "all" ? undefined : roleFilter, userPage)
+    queryFn: () => fetchUsers(roleFilter === "all" ? undefined : roleFilter, userPage),
+    enabled: isAuthorized
   });
 
   const usersList = (usersData?.data || []) as ModeratedUser[];
@@ -173,7 +179,7 @@ export default function AdminDashboardPage() {
   const { data: telemetryData, isLoading: telemetryLoading } = useQuery({
     queryKey: ["telemetry", activeRoundId],
     queryFn: () => fetchRoundTelemetry(activeRoundId),
-    enabled: Boolean(activeRoundId)
+    enabled: isAuthorized && Boolean(activeRoundId)
   });
 
   const telemetryList = (telemetryData || []) as RaidTelemetry[];
@@ -181,19 +187,21 @@ export default function AdminDashboardPage() {
   const { data: leaderboardData } = useQuery({
     queryKey: ["leaderboard", activeRoundId],
     queryFn: () => fetchRoundLeaderboard(activeRoundId),
-    enabled: Boolean(activeRoundId)
+    enabled: isAuthorized && Boolean(activeRoundId)
   });
 
   const { data: threadMapsData } = useQuery({
     queryKey: ["shot-thread-maps"],
-    queryFn: fetchShotThreadMaps
+    queryFn: fetchShotThreadMaps,
+    enabled: isAuthorized
   });
 
   const shotThreadMaps = threadMapsData || [];
 
   const { data: shotsData, isLoading: shotsLoading } = useQuery({
     queryKey: ["shots"],
-    queryFn: fetchShots
+    queryFn: fetchShots,
+    enabled: isAuthorized
   });
 
   const shotsList = (shotsData?.data || []) as Shot[];
