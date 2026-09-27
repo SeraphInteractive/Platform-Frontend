@@ -86,7 +86,7 @@ export default function ProgressPage() {
       </fieldset>
 
       {/* detailed phases breakdown with distinct phase milestones */}
-      <h2>Production Pipeline Breakdown</h2>
+      <h2>Pipeline</h2>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {PIPELINE_PHASES.map((phase) => {
