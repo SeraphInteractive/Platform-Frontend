@@ -121,6 +121,9 @@ export default function AdminDashboardPage() {
   const [editPollType, setEditPollType] = useState("ranked_choice");
   const [editRoundStatus, setEditRoundStatus] = useState("draft");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [finalizingRound, setFinalizingRound] = useState<Round | null>(null);
+  const [finalizeConfirmed, setFinalizeConfirmed] = useState<boolean>(false);
+  const [isFinalizing, setIsFinalizing] = useState<boolean>(false);
 
   // pipeline state
   const [stepIndex, setStepIndex] = useState<number>(0);
@@ -428,14 +431,25 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleFinalizeRound = async (roundId: string) => {
-    if (!confirm("Finalize and certify results for this round?")) return;
+  const handleOpenFinalizeModal = (round: Round) => {
+    setFinalizingRound(round);
+    setFinalizeConfirmed(false);
+  };
+
+  const handleExecuteFinalizeRound = async () => {
+    if (!finalizingRound || !finalizeConfirmed) return;
+    setIsFinalizing(true);
     try {
-      await finalizeRound(roundId);
-      setRoundStatus("Round certified and finalized.");
+      await finalizeRound(finalizingRound.id);
+      setRoundStatus(`Round "${finalizingRound.title}" certified and finalized.`);
+      setFinalizingRound(null);
+      setFinalizeConfirmed(false);
       queryClient.invalidateQueries({ queryKey: ["rounds"] });
+      queryClient.invalidateQueries({ queryKey: ["active-round"] });
     } catch (err: unknown) {
       setRoundStatus(`Finalize failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsFinalizing(false);
     }
   };
 
@@ -1180,9 +1194,24 @@ export default function AdminDashboardPage() {
                         onChange={(e) => setEditRoundStatus(e.target.value)}
                         style={{ padding: "3px", fontSize: "12px" }}
                       >
-                        <option value="draft">DRAFT (Setup)</option>
-                        <option value="open">OPEN (Active Voting)</option>
-                        <option value="closed">CLOSED</option>
+                        {editingRound.status === "draft" && (
+                          <>
+                            <option value="draft">DRAFT (Setup)</option>
+                            <option value="open">OPEN (Submissions)</option>
+                          </>
+                        )}
+                        {editingRound.status === "open" && (
+                          <>
+                            <option value="open">OPEN (Submissions)</option>
+                            <option value="voting">VOTING (Active)</option>
+                          </>
+                        )}
+                        {editingRound.status === "voting" && (
+                          <option value="voting">VOTING (Active)</option>
+                        )}
+                        {editingRound.status === "finalized" && (
+                          <option value="finalized">FINALIZED</option>
+                        )}
                       </select>
                     </div>
                   </div>
@@ -1230,7 +1259,7 @@ export default function AdminDashboardPage() {
                     onChange={(e) => setNewRoundStatus(e.target.value)}
                     style={{ padding: "3px", fontSize: "12px" }}
                   >
-                    <option value="open">Open (Active Voting)</option>
+                    <option value="open">Open (Submissions)</option>
                     <option value="draft">Draft (Setup First)</option>
                   </select>
                 </div>
@@ -1244,8 +1273,8 @@ export default function AdminDashboardPage() {
           <div style={{ marginBottom: "10px", padding: "6px 8px", backgroundColor: "#f4f2eb", border: "1px solid #ccc", fontSize: "11px", display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
             <strong>Statuses:</strong>
             <span><strong>DRAFT:</strong> Staging / hidden</span>
-            <span><strong>OPEN:</strong> Live voting on /voting</span>
-            <span><strong>CLOSED:</strong> Voting stopped</span>
+            <span><strong>OPEN:</strong> Submissions open</span>
+            <span><strong>VOTING:</strong> Active voting (5 finalists)</span>
             <span><strong>FINALIZED:</strong> Certified</span>
           </div>
 
@@ -1283,15 +1312,27 @@ export default function AdminDashboardPage() {
                               padding: "2px 4px",
                               fontSize: "11px",
                               fontWeight: "bold",
-                              backgroundColor: (r.status === "open" || r.status === "active") ? "#e2f0d9" : r.status === "draft" ? "#fff3cd" : "#f0f0f0",
-                              color: (r.status === "open" || r.status === "active") ? "#276a3c" : r.status === "draft" ? "#856404" : "#333",
+                              backgroundColor: r.status === "voting" ? "#e2f0d9" : r.status === "open" ? "#dbeafe" : r.status === "draft" ? "#fff3cd" : "#f0f0f0",
+                              color: r.status === "voting" ? "#276a3c" : r.status === "open" ? "#1d4ed8" : r.status === "draft" ? "#856404" : "#333",
                               border: "1px solid #999",
                               cursor: "pointer"
                             }}
                           >
-                            <option value="draft">DRAFT</option>
-                            <option value="open">OPEN (Active)</option>
-                            <option value="closed">CLOSED</option>
+                            {r.status === "draft" && (
+                              <>
+                                <option value="draft">DRAFT</option>
+                                <option value="open">OPEN (Submissions)</option>
+                              </>
+                            )}
+                            {r.status === "open" && (
+                              <>
+                                <option value="open">OPEN (Submissions)</option>
+                                <option value="voting">VOTING (Active)</option>
+                              </>
+                            )}
+                            {r.status === "voting" && (
+                              <option value="voting">VOTING (Active)</option>
+                            )}
                           </select>
                         )}
                       </td>
@@ -1303,52 +1344,43 @@ export default function AdminDashboardPage() {
                               className="action-btn"
                               onClick={() => handleQuickUpdateRoundStatus(r.id, "open")}
                               style={{ fontSize: "10px", padding: "1px 5px", backgroundColor: "#e2f0d9", color: "#276a3c", fontWeight: "bold" }}
-                              title="Start voting now"
+                              title="Open round for submissions"
+                            >
+                              Open Submissions
+                            </button>
+                          )}
+                          {r.status === "open" && (
+                            <button
+                              type="button"
+                              className="action-btn"
+                              onClick={() => handleQuickUpdateRoundStatus(r.id, "voting")}
+                              style={{ fontSize: "10px", padding: "1px 5px", backgroundColor: "#e2f0d9", color: "#276a3c", fontWeight: "bold" }}
+                              title="Publish approved finalists & open ballot voting"
                             >
                               Start Voting
                             </button>
                           )}
-                          {(r.status === "open" || r.status === "active") && (
+                          {r.status === "voting" && (
                             <button
                               type="button"
                               className="action-btn"
-                              onClick={() => handleQuickUpdateRoundStatus(r.id, "closed")}
-                              style={{ fontSize: "10px", padding: "1px 5px", backgroundColor: "#fff3cd", color: "#856404", fontWeight: "bold" }}
-                              title="Close voting round"
+                              onClick={() => handleOpenFinalizeModal(r)}
+                              style={{ fontSize: "10px", padding: "1px 5px", backgroundColor: "#e2f0d9", color: "#276a3c", fontWeight: "bold" }}
+                              title="Finalize and certify results"
                             >
-                              Close Voting
+                              Finalize
                             </button>
                           )}
-                          {r.status === "closed" && (
-                            <>
-                              <button
-                                type="button"
-                                className="action-btn"
-                                onClick={() => handleFinalizeRound(r.id)}
-                                style={{ fontSize: "10px", padding: "1px 5px", backgroundColor: "#e2f0d9", color: "#276a3c", fontWeight: "bold" }}
-                                title="Certify and finalize results"
-                              >
-                                Finalize
-                              </button>
-                              <button
-                                type="button"
-                                className="action-btn"
-                                onClick={() => handleQuickUpdateRoundStatus(r.id, "open")}
-                                style={{ fontSize: "10px", padding: "1px 5px", backgroundColor: "#dbeafe", color: "#1d4ed8" }}
-                                title="Reopen round for voting"
-                              >
-                                Reopen
-                              </button>
-                            </>
+                          {r.status !== "finalized" && (
+                            <button
+                              type="button"
+                              className="action-btn"
+                              onClick={() => handleStartEditRound(r)}
+                              style={{ fontSize: "10px", padding: "1px 5px" }}
+                            >
+                              Edit
+                            </button>
                           )}
-                          <button
-                            type="button"
-                            className="action-btn"
-                            onClick={() => handleStartEditRound(r)}
-                            style={{ fontSize: "10px", padding: "1px 5px" }}
-                          >
-                            Edit
-                          </button>
                           {r.status !== "finalized" && (
                             <button
                               type="button"
@@ -1367,6 +1399,65 @@ export default function AdminDashboardPage() {
               </table>
             )}
           </fieldset>
+
+          {finalizingRound && (
+            <div style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000
+            }}>
+              <fieldset className="grab-box" style={{ backgroundColor: "#ffffff", maxWidth: "480px", width: "90%", borderColor: "#333", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+                <legend style={{ fontWeight: "bold", color: "#856404" }}>Finalize & Certify Round</legend>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  <div>
+                    <strong>Round:</strong> {finalizingRound.title} ({finalizingRound.pollType === "binary" || finalizingRound.scheme === "binary" ? "Binary 1-0" : "Ranked Choice 3-2-1"})
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#444", lineHeight: "1.4" }}>
+                    Finalizing will permanently close ballot voting, calculate certified standings and leading separations, and record the winner into the permanent ledger.
+                  </div>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "12px", cursor: "pointer", fontWeight: "bold", marginTop: "4px" }}>
+                    <input
+                      type="checkbox"
+                      checked={finalizeConfirmed}
+                      onChange={(e) => setFinalizeConfirmed(e.target.checked)}
+                      style={{ marginTop: "2px" }}
+                    />
+                    <span>I confirm that I want to finalize and certify this round. This action cannot be undone.</span>
+                  </label>
+                  <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "6px" }}>
+                    <button
+                      type="button"
+                      className="action-btn"
+                      onClick={() => { setFinalizingRound(null); setFinalizeConfirmed(false); }}
+                      disabled={isFinalizing}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="action-btn"
+                      disabled={!finalizeConfirmed || isFinalizing}
+                      onClick={handleExecuteFinalizeRound}
+                      style={{
+                        backgroundColor: finalizeConfirmed ? "#e2f0d9" : "#f0f0f0",
+                        color: finalizeConfirmed ? "#276a3c" : "#888",
+                        fontWeight: "bold"
+                      }}
+                    >
+                      {isFinalizing ? "Finalizing..." : "Certify & Finalize"}
+                    </button>
+                  </div>
+                </div>
+              </fieldset>
+            </div>
+          )}
         </div>
       )}
 

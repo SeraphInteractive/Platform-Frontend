@@ -142,11 +142,16 @@ export default function VotingPage() {
     }
   };
 
+  const isBinary = activeRound?.pollType === "binary" || activeRound?.scheme === "binary";
+  const ranks = isBinary ? [1] : [1, 2, 3];
+  const isVotingActive = activeRound?.status === "voting";
+  const isSubmissionActive = activeRound?.status === "open";
+  const isFinalized = activeRound?.status === "finalized";
+
   return (
     <div>
       <h1>Voting</h1>
 
-      {/* round selector */}
       {/* round selector */}
       <fieldset className="grab-box">
         <legend>Active Round</legend>
@@ -184,8 +189,8 @@ export default function VotingPage() {
               </div>
             )}
             {activeRound && (
-              <span className={`badge ${activeRound.status === "active" || activeRound.status === "open" ? "badge-active" : "badge-closed"}`}>
-                {activeRound.status.toUpperCase()}
+              <span className={`badge ${activeRound.status === "voting" ? "badge-active" : activeRound.status === "open" ? "badge-contributor" : "badge-closed"}`}>
+                {activeRound.status === "open" ? "OPEN FOR SUBMISSIONS" : activeRound.status === "voting" ? "VOTING ACTIVE" : activeRound.status.toUpperCase()}
               </span>
             )}
           </div>
@@ -193,12 +198,26 @@ export default function VotingPage() {
       </fieldset>
 
       <h2>Candidate Pool</h2>
-      {entriesLoading ? (
+      {isSubmissionActive ? (
+        <fieldset className="grab-box" style={{ backgroundColor: "#f4f8fb", borderColor: "#3a75c4", marginBottom: "14px" }}>
+          <legend style={{ fontWeight: "bold", color: "#1d4ed8" }}>Submissions Stage Active</legend>
+          <p style={{ margin: 0, fontSize: "12px", color: "#1e3a8a" }}>
+            This round is currently open for proposals. Submit your concepts below. Once submissions conclude, supervisors will publish the finalist candidates to open ballot voting.
+          </p>
+        </fieldset>
+      ) : isFinalized ? (
+        <fieldset className="grab-box" style={{ backgroundColor: "#f9fafb", borderColor: "#999", marginBottom: "14px" }}>
+          <legend style={{ fontWeight: "bold" }}>Voting Finalized</legend>
+          <p style={{ margin: 0, fontSize: "12px", color: "#555" }}>
+            Voting has concluded and certified results have been recorded for this round.
+          </p>
+        </fieldset>
+      ) : entriesLoading ? (
         <p>Loading candidate entries...</p>
       ) : entries.length === 0 ? (
         <fieldset className="grab-box" style={{ backgroundColor: "#ffffff" }}>
           <p style={{ margin: 0 }}>
-            No approved candidate entries in this round yet. Submit a proposal below to join the pool.
+            No approved candidate entries in this round yet.
           </p>
         </fieldset>
       ) : (
@@ -231,45 +250,49 @@ export default function VotingPage() {
                   )}
                 </td>
                 <td>
-                  <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
-                    {[1, 2, 3].map((r) => {
-                      const isSelected = picks[entry.id] === r;
-                      return (
+                  {isVotingActive ? (
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", alignItems: "center" }}>
+                      {ranks.map((r) => {
+                        const isSelected = picks[entry.id] === r;
+                        return (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => setRank(entry.id, r)}
+                            style={{
+                              fontSize: "11px",
+                              padding: "2px 6px",
+                              fontWeight: isSelected ? "bold" : "normal",
+                              backgroundColor: isSelected ? "#3a75c4" : "#eee",
+                              color: isSelected ? "#ffffff" : "#333333",
+                              border: "1px solid #999",
+                              cursor: "pointer"
+                            }}
+                          >
+                            {isBinary ? "Vote" : r === 1 ? "1st (3 pts)" : r === 2 ? "2nd (2 pts)" : "3rd (1 pt)"}
+                          </button>
+                        );
+                      })}
+                      {picks[entry.id] && (
                         <button
-                          key={r}
                           type="button"
-                          onClick={() => setRank(entry.id, r)}
+                          onClick={() => setRank(entry.id, picks[entry.id])}
                           style={{
-                            fontSize: "11px",
-                            padding: "2px 6px",
-                            fontWeight: isSelected ? "bold" : "normal",
-                            backgroundColor: isSelected ? "#3a75c4" : "#eee",
-                            color: isSelected ? "#ffffff" : "#333333",
-                            border: "1px solid #999",
+                            fontSize: "10px",
+                            padding: "2px 5px",
+                            backgroundColor: "#fde8e8",
+                            color: "#c00",
+                            border: "1px solid #c00",
                             cursor: "pointer"
                           }}
                         >
-                          {r === 1 ? "1st (3 pts)" : r === 2 ? "2nd (2 pts)" : "3rd (1 pt)"}
+                          Clear
                         </button>
-                      );
-                    })}
-                    {picks[entry.id] && (
-                      <button
-                        type="button"
-                        onClick={() => setRank(entry.id, picks[entry.id])}
-                        style={{
-                          fontSize: "10px",
-                          padding: "2px 5px",
-                          backgroundColor: "#fde8e8",
-                          color: "#c00",
-                          border: "1px solid #c00",
-                          cursor: "pointer"
-                        }}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: "11px", color: "#888" }}>Voting not active</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -280,7 +303,11 @@ export default function VotingPage() {
       {/* cast ballot controls */}
       <fieldset className="grab-box" style={{ marginTop: "16px" }}>
         <legend>Ballot</legend>
-        {!user ? (
+        {!isVotingActive ? (
+          <div style={{ fontSize: "12px", color: "#666" }}>
+            Ballots can only be cast when the round is in the voting stage.
+          </div>
+        ) : !user ? (
           <div>
             Please <button type="button" className="action-btn" onClick={login}>Log in with Discord</button> to vote.
           </div>
@@ -311,7 +338,15 @@ export default function VotingPage() {
       <h2 style={{ marginTop: "24px" }}>Submit Proposal</h2>
       <fieldset className="grab-box" style={{ backgroundColor: "#ffffff" }}>
         <legend>Submit Proposal</legend>
-        {!user ? (
+        {!isSubmissionActive ? (
+          <div style={{ fontSize: "12px", color: "#666" }}>
+            {isVotingActive
+              ? "Proposal submissions are closed for this round. Finalist candidates have been published and voting is currently underway."
+              : isFinalized
+                ? "This round has been finalized and certified."
+                : "Submissions will open once this round is in the open stage."}
+          </div>
+        ) : !user ? (
           <div>
             Please <button type="button" className="action-btn" onClick={login}>Log in with Discord</button> to submit an entry for this round.
           </div>

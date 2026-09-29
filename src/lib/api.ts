@@ -16,7 +16,7 @@ export interface Round {
   description?: string | null;
   scheme?: "ranked" | "binary" | string;
   pollType?: "ranked_choice" | "binary" | string;
-  status: "draft" | "active" | "open" | "closed" | "tallied" | "finalized" | string;
+  status: "draft" | "open" | "voting" | "finalized" | string;
   opensAt?: string | null;
   closesAt?: string | null;
   windowOpenAt?: string | null;
@@ -135,7 +135,7 @@ export async function updateRound(
   data: {
     title?: string;
     pollType?: "ranked_choice" | "binary" | string;
-    status?: "draft" | "open" | "closed" | string;
+    status?: "draft" | "open" | "voting" | string;
     opensAt?: string | null;
     closesAt?: string | null;
   }
