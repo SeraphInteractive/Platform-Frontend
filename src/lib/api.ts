@@ -34,6 +34,7 @@ export interface Entry {
   authorName?: string;
   submittedBy?: string | null;
   mediaUrl?: string | null;
+  aiFlags?: string[];
   status: string;
   isQuarantined?: boolean;
   createdAt: string;
@@ -198,6 +199,7 @@ export interface ReviewQueueItem {
   } | null;
   videoUrl?: string | null;
   blendUrl?: string | null;
+  aiFlags?: string[];
   createdAt: string;
   shot?: {
     id: string;

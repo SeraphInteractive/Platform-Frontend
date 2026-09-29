@@ -635,7 +635,25 @@ export default function AdminDashboardPage() {
                         </span>
                       </td>
                       <td>
-                        <strong>{e.title}</strong>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <strong>{e.title}</strong>
+                          {e.aiFlags && e.aiFlags.length > 0 && (
+                            <span
+                              title={`AI signatures detected:\n${e.aiFlags.join("\n")}`}
+                              style={{
+                                fontSize: "9px",
+                                padding: "1px 4px",
+                                borderRadius: "2px",
+                                backgroundColor: "#ffebee",
+                                color: "#c62828",
+                                border: "1px solid #ffcdd2",
+                                fontWeight: "bold"
+                              }}
+                            >
+                              AI FLAG ({e.aiFlags.length})
+                            </span>
+                          )}
+                        </div>
                         {e.authorName && <div style={{ fontSize: "11px", color: "#666" }}>@{e.authorName}</div>}
                       </td>
                       <td style={{ maxWidth: "240px", fontSize: "11px" }}>
@@ -718,7 +736,25 @@ export default function AdminDashboardPage() {
                     </legend>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                       <div>
-                        <strong>{item.shot?.title || "Shot"}</strong>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <strong>{item.shot?.title || "Shot"}</strong>
+                          {item.aiFlags && item.aiFlags.length > 0 && (
+                            <span
+                              title={`AI signatures detected:\n${item.aiFlags.join("\n")}`}
+                              style={{
+                                fontSize: "9px",
+                                padding: "1px 4px",
+                                borderRadius: "2px",
+                                backgroundColor: "#ffebee",
+                                color: "#c62828",
+                                border: "1px solid #ffcdd2",
+                                fontWeight: "bold"
+                              }}
+                            >
+                              AI FLAG ({item.aiFlags.length})
+                            </span>
+                          )}
+                        </div>
                         <div style={{ fontSize: "11px", color: "#555" }}>
                           Contributor: @{item.contributor?.discordUsername || item.contributor?.username || "Unknown"}
                         </div>
