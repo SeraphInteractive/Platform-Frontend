@@ -30,7 +30,7 @@ export default function VotingPage() {
   });
 
   const rounds = roundsData?.data || [];
-  const activeRounds = rounds.filter((r) => r.status === "active" || r.status === "open" || r.status === "draft");
+  const activeRounds = rounds.filter((r) => r.status === "active" || r.status === "open" || r.status === "voting" || (isSupervisor && r.status === "draft"));
   const activeRoundId = selectedRoundId || activeRounds[0]?.id || rounds[0]?.id || "";
   const activeRound = rounds.find((r) => r.id === activeRoundId);
 

@@ -1742,8 +1742,7 @@ function TelemetrySection({
       "cluster-ready": { current: null, history: [], status: "probing", http: null },
       "voting-rounds": { current: null, history: [], status: "probing", http: null },
       "grabbox-tasks": { current: null, history: [], status: "probing", http: null },
-      "auth-session": { current: null, history: [], status: "probing", http: null },
-      "legal-docs": { current: null, history: [], status: "probing", http: null }
+      "auth-session": { current: null, history: [], status: "probing", http: null }
     });
 
     const runPings = async () => {
@@ -1755,8 +1754,7 @@ function TelemetrySection({
         { id: "cluster-ready", path: "/api/v1/health/ready" },
         { id: "voting-rounds", path: "/api/v1/rounds?page=1&perPage=1" },
         { id: "grabbox-tasks", path: "/api/v1/shots?status=available&page=1&perPage=1" },
-        { id: "auth-session", path: "/api/v1/users/me" },
-        { id: "legal-docs", path: "/api/v1/documents/terms" }
+        { id: "auth-session", path: "/api/v1/users/me" }
       ];
 
       await Promise.allSettled(
@@ -1830,18 +1828,14 @@ function TelemetrySection({
       { id: "cluster-ready", name: "Cluster Readiness", tag: "BACKEND READINESS", group: "Infrastructure", desc: "Service mesh & backend status" },
       { id: "voting-rounds", name: "Voting Rounds Feed", tag: "PUBLIC VOTING", group: "Public Outlets", desc: "Active election queries" },
       { id: "grabbox-tasks", name: "Grab-Box Tasks Feed", tag: "PUBLIC WORK", group: "Public Outlets", desc: "Open grabbox work queue" },
-      { id: "auth-session", name: "Session Gateway", tag: "AUTH & IDENTITY", group: "Public Outlets", desc: "Auth token validation" },
-      { id: "legal-docs", name: "Legal Documents", tag: "STATIC CACHE", group: "Public Outlets", desc: "Terms & guidelines publication" }
+      { id: "auth-session", name: "Session Gateway", tag: "AUTH & IDENTITY", group: "Public Outlets", desc: "Auth token validation" }
     ];
 
     return (
       <fieldset className="grab-box" style={{ backgroundColor: "#ffffff" }}>
-        <legend style={{ fontWeight: "bold" }}>API Endpoints & Infrastructure Responsiveness</legend>
+        <legend style={{ fontWeight: "bold" }}>Network & Infrastructure Telemetry</legend>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
-          <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
-            Streaming live diagnostic (2.5s cadence) across infrastructure and public HTTP outlets.
-          </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
           <div style={{ display: "flex", gap: "6px" }}>
             <button
               type="button"
