@@ -49,10 +49,12 @@ import { FLAT_PIPELINE_STEPS, getSavedPipelineStepIndex, savePipelineStepIndex }
 type AdminTab = "Reviews" | "Tasks" | "Telemetry" | "Users" | "Rounds" | "Pipeline" | "Guidelines";
 
 const ROLE_TIERS = [
-  { value: "admin", label: "Executive Tier (Admin 0)" },
-  { value: "supervisor", label: "Department Tier (Supervisors 1)" },
-  { value: "contributor", label: "Contributor Tier (Contributors 2)" },
-  { value: "voter", label: "Community Tier (Voters 3)" }
+  { value: "super_admin", label: "Executive (Super Admin / Producer)" },
+  { value: "admin", label: "Executive (Admin)" },
+  { value: "supervisor", label: "Department (Supervisor)" },
+  { value: "contributor", label: "Contributor" },
+  { value: "voter", label: "Voter" },
+  { value: "member", label: "Member (Unvoted)" }
 ];
 
 const CONTRIBUTOR_SPECIALTIES = [
