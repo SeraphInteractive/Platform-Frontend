@@ -38,10 +38,10 @@ interface UploadResponse {
 function GrabBoxContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { user, login } = useAuth();
+  const { user, isSupervisor, login } = useAuth();
   const targetShotId = searchParams.get("shotId");
 
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<string>("active");
   const [activeModalShot, setActiveModalShot] = useState<LiveShot | null>(null);
 
   // claim modal state
@@ -80,8 +80,10 @@ function GrabBoxContent() {
   const claimedCount = shots.filter((s) => s.status === "claimed").length;
   const submittedCount = shots.filter((s) => s.status === "submitted").length;
   const approvedCount = shots.filter((s) => s.status === "approved").length;
+  const activeCount = availableCount + claimedCount + submittedCount;
 
   const filteredShots = shots.filter((s) => {
+    if (filter === "active" || filter === "all_active") return s.status === "available" || s.status === "claimed" || s.status === "submitted";
     if (filter === "all") return true;
     return s.status === filter;
   });
@@ -306,11 +308,12 @@ function GrabBoxContent() {
             onChange={(e) => setFilter(e.target.value)}
             style={{ padding: "2px 6px", fontSize: "12px" }}
           >
-            <option value="all">All Tasks ({shots.length})</option>
+            <option value="active">Active Tasks ({activeCount})</option>
             <option value="available">Available ({availableCount})</option>
             <option value="claimed">Claimed ({claimedCount})</option>
             <option value="submitted">In Review ({submittedCount})</option>
             <option value="approved">Approved ({approvedCount})</option>
+            <option value="all">All Tasks ({shots.length})</option>
           </select>
 
           <span style={{ marginLeft: "auto", fontSize: "11px", color: "#555" }}>
@@ -407,7 +410,7 @@ function GrabBoxContent() {
                     {/* submit deliverables button */}
                     {(shot.status === "claimed" || shot.status === "submitted") && (
                       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-                        {isClaimedByMe && shot.status === "claimed" && (
+                        {(isClaimedByMe || isSupervisor) && shot.status === "claimed" && (
                           <button
                             type="button"
                             className="action-btn"
@@ -417,14 +420,16 @@ function GrabBoxContent() {
                             Release
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="action-btn"
-                          onClick={() => handleOpenModal(shot)}
-                          style={{ marginTop: "6px", fontWeight: "bold" }}
-                        >
-                          Submit Work
-                        </button>
+                        {(isClaimedByMe || isSupervisor) && (
+                          <button
+                            type="button"
+                            className="action-btn"
+                            onClick={() => handleOpenModal(shot)}
+                            style={{ marginTop: "6px", fontWeight: "bold" }}
+                          >
+                            Submit Work
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
