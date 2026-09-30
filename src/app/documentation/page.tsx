@@ -2,19 +2,41 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 type DocTab = "rules" | "voting-math" | "anti-cheat" | "pipeline";
 
 export default function DocumentationPage() {
   const [activeTab, setActiveTab] = useState<DocTab>("rules");
+  const { isAdmin, isSupervisor } = useAuth();
+  const canEdit = isAdmin || isSupervisor;
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-        <h1 style={{ margin: 0, borderBottom: "none" }}>Guidelines & System Architecture</h1>
-        <span className="badge" style={{ backgroundColor: "#e2f0d9", color: "#276a3c", fontWeight: "bold" }}>
-          INTEGRITY SPEC v2.0
-        </span>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <h1 style={{ margin: 0, borderBottom: "none" }}>Guidelines & System Architecture</h1>
+          <span className="badge" style={{ backgroundColor: "#e2f0d9", color: "#276a3c", fontWeight: "bold" }}>
+            INTEGRITY SPEC v2.0
+          </span>
+        </div>
+        {canEdit && (
+          <Link
+            href="/admin?tab=Guidelines"
+            className="action-btn"
+            style={{
+              padding: "4px 10px",
+              fontSize: "11px",
+              backgroundColor: "#fffdf0",
+              borderColor: "#b8860b",
+              color: "#8b6508",
+              fontWeight: "bold",
+              textDecoration: "none"
+            }}
+          >
+            &#9998; Edit Guidelines & Rules
+          </Link>
+        )}
       </div>
 
       <p style={{ margin: "0 0 12px 0", fontSize: "12px", color: "var(--text-muted)" }}>

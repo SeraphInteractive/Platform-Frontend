@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +31,10 @@ import {
   fetchPipelineProgress,
   updatePipelineProgress,
   getDiscordAvatarUrl,
+  fetchDocument,
+  publishDocument,
+  fetchDocumentRevisions,
+  DocumentSection,
   Round,
   Entry,
   ReviewQueueItem,
@@ -41,7 +46,7 @@ import {
 } from "@/lib/api";
 import { FLAT_PIPELINE_STEPS, getSavedPipelineStepIndex, savePipelineStepIndex } from "@/lib/pipeline";
 
-type AdminTab = "Reviews" | "Tasks" | "Telemetry" | "Users" | "Rounds" | "Pipeline";
+type AdminTab = "Reviews" | "Tasks" | "Telemetry" | "Users" | "Rounds" | "Pipeline" | "Guidelines";
 
 const ROLE_TIERS = [
   { value: "admin", label: "Executive Tier (Admin 0)" },
@@ -76,14 +81,53 @@ function getUserSpecialty(specs?: string[]): string {
   return match ? match.value : (raw === "none" ? "" : raw);
 }
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
   const { isAdmin, isSupervisor, isLoading } = useAuth();
   // block all data fetching until auth confirms staff access
   const isAuthorized = !isLoading && (isAdmin || isSupervisor);
 
   const [activeTab, setActiveTab] = useState<AdminTab>("Reviews");
+
+  useEffect(() => {
+    if (tabParam && ["Reviews", "Tasks", "Telemetry", "Users", "Rounds", "Pipeline", "Guidelines"].includes(tabParam)) {
+      setActiveTab(tabParam as AdminTab);
+    }
+  }, [tabParam]);
+
   const [selectedRoundId, setSelectedRoundId] = useState<string>("");
+
+  // guidelines & rules state
+  const [selectedDocSlug, setSelectedDocSlug] = useState<string>("guidelines");
+  const [docTitle, setDocTitle] = useState<string>("");
+  const [docSections, setDocSections] = useState<DocumentSection[]>([]);
+  const [docNote, setDocNote] = useState<string>("");
+  const [docRequireReacceptance, setDocRequireReacceptance] = useState<boolean>(false);
+  const [docStatus, setDocStatus] = useState<string | null>(null);
+  const [isPublishingDoc, setIsPublishingDoc] = useState<boolean>(false);
+
+  const { data: documentData } = useQuery({
+    queryKey: ["document", selectedDocSlug],
+    queryFn: () => fetchDocument(selectedDocSlug),
+    enabled: isAuthorized
+  });
+
+  const { data: documentRevisionsData } = useQuery({
+    queryKey: ["document-revisions", selectedDocSlug],
+    queryFn: () => fetchDocumentRevisions(selectedDocSlug),
+    enabled: isAuthorized
+  });
+
+  useEffect(() => {
+    if (documentData) {
+      setDocTitle(documentData.title || "");
+      setDocSections(documentData.sections ? [...documentData.sections] : []);
+      setDocNote("");
+      setDocStatus(null);
+    }
+  }, [documentData]);
 
   // reviews state
   const [entryStatus, setEntryStatus] = useState<string | null>(null);
@@ -519,6 +563,58 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleAddSection = () => {
+    const newId = `section-${docSections.length + 1}`;
+    setDocSections([...docSections, { id: newId, title: "New Section", html: "<p>Write rule content here...</p>" }]);
+  };
+
+  const handleUpdateSection = (index: number, field: keyof DocumentSection, value: string) => {
+    const updated = [...docSections];
+    updated[index] = { ...updated[index], [field]: value };
+    setDocSections(updated);
+  };
+
+  const handleMoveSection = (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === docSections.length - 1) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    const updated = [...docSections];
+    const temp = updated[index];
+    updated[index] = updated[targetIndex];
+    updated[targetIndex] = temp;
+    setDocSections(updated);
+  };
+
+  const handleDeleteSection = (index: number) => {
+    setDocSections(docSections.filter((_, i) => i !== index));
+  };
+
+  const handlePublishDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!docTitle.trim() || docSections.length === 0) {
+      setDocStatus("Error: Document must have a title and at least one section.");
+      return;
+    }
+    setIsPublishingDoc(true);
+    setDocStatus(null);
+    try {
+      const published = await publishDocument(selectedDocSlug, {
+        title: docTitle.trim(),
+        sections: docSections,
+        note: docNote.trim() || null,
+        requireReacceptance: docRequireReacceptance
+      });
+      setDocStatus(`Published revision #${published.revision} successfully! Dynamic update broadcast to Discord #rules.`);
+      setDocNote("");
+      queryClient.invalidateQueries({ queryKey: ["document", selectedDocSlug] });
+      queryClient.invalidateQueries({ queryKey: ["document-revisions", selectedDocSlug] });
+    } catch (err: unknown) {
+      setDocStatus(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsPublishingDoc(false);
+    }
+  };
+
   const currentStep = FLAT_PIPELINE_STEPS[stepIndex] || FLAT_PIPELINE_STEPS[0];
   const progressPercent = Math.round(((stepIndex + 1) / FLAT_PIPELINE_STEPS.length) * 100);
 
@@ -529,8 +625,8 @@ export default function AdminDashboardPage() {
         <span className="badge badge-admin">SUPERVISOR</span>
       </div>
 
-      <div style={{ display: "flex", gap: "4px", borderBottom: "2px solid var(--border-dark)", marginBottom: "14px" }}>
-        {(["Reviews", "Tasks", "Telemetry", "Users", "Rounds", "Pipeline"] as const).map((tab) => (
+      <div style={{ display: "flex", gap: "4px", borderBottom: "2px solid var(--border-dark)", marginBottom: "14px", flexWrap: "wrap" }}>
+        {(["Reviews", "Tasks", "Telemetry", "Users", "Rounds", "Pipeline", "Guidelines"] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -541,6 +637,7 @@ export default function AdminDashboardPage() {
               setUserStatus(null);
               setRoundStatus(null);
               setTaskStatus(null);
+              setDocStatus(null);
             }}
             style={{
               padding: "5px 14px",
@@ -1597,7 +1694,272 @@ export default function AdminDashboardPage() {
           </div>
         </fieldset>
       )}
+
+      {activeTab === "Guidelines" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <fieldset className="grab-box" style={{ backgroundColor: "#ffffff" }}>
+            <legend style={{ fontWeight: "bold" }}>Community Guidelines & Rules Editor</legend>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <label htmlFor="doc-slug"><strong>Target Document:</strong></label>
+                <select
+                  id="doc-slug"
+                  value={selectedDocSlug}
+                  onChange={(e) => {
+                    setSelectedDocSlug(e.target.value);
+                    setDocStatus(null);
+                  }}
+                  style={{ padding: "4px 8px", fontSize: "12px", fontWeight: "bold" }}
+                >
+                  <option value="guidelines">Community Guidelines (Synced to Discord #rules)</option>
+                  <option value="terms">Terms of Service</option>
+                  <option value="privacy">Privacy Policy</option>
+                  <option value="acceptable-use">Acceptable Use Policy</option>
+                </select>
+              </div>
+
+              {documentData && (
+                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                  Current: <strong>Rev #{documentData.revision}</strong> • Updated {new Date(documentData.updatedAt).toLocaleString()}
+                </span>
+              )}
+            </div>
+
+            {docStatus && (
+              <div
+                style={{
+                  padding: "8px 12px",
+                  marginBottom: "12px",
+                  fontSize: "12px",
+                  backgroundColor: docStatus.startsWith("Error") ? "#ffebee" : "#e2f0d9",
+                  color: docStatus.startsWith("Error") ? "#c00" : "#276a3c",
+                  border: "1px solid",
+                  borderColor: docStatus.startsWith("Error") ? "#f5c6cb" : "#c3e6cb",
+                  fontWeight: "bold"
+                }}
+              >
+                {docStatus}
+              </div>
+            )}
+
+            <form onSubmit={handlePublishDocument} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <label htmlFor="doc-title" style={{ display: "block", fontSize: "12px", marginBottom: "4px" }}>
+                  <strong>Document Title:</strong>
+                </label>
+                <input
+                  id="doc-title"
+                  type="text"
+                  value={docTitle}
+                  onChange={(e) => setDocTitle(e.target.value)}
+                  style={{ width: "100%", padding: "6px 8px", fontSize: "13px", boxSizing: "border-box" }}
+                  placeholder="e.g. Studio Guidelines & System Integrity"
+                  required
+                />
+              </div>
+
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                  <label style={{ fontSize: "12px" }}><strong>Document Sections ({docSections.length}):</strong></label>
+                  <button
+                    type="button"
+                    onClick={handleAddSection}
+                    className="action-btn"
+                    style={{ fontSize: "11px", backgroundColor: "#e2f0d9", color: "#276a3c", fontWeight: "bold" }}
+                  >
+                    + Add Section
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {docSections.map((sec, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: "10px",
+                        border: "1px solid var(--border-dark)",
+                        backgroundColor: "#faf9f6"
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px", flexWrap: "wrap", gap: "6px" }}>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center", flex: 1, minWidth: "260px" }}>
+                          <span style={{ fontSize: "11px", fontWeight: "bold", color: "#555" }}>#{idx + 1}</span>
+                          <input
+                            type="text"
+                            value={sec.title}
+                            onChange={(e) => handleUpdateSection(idx, "title", e.target.value)}
+                            placeholder="Section Title (e.g. 1. Voting Math)"
+                            style={{ flex: 1, padding: "4px 6px", fontSize: "12px", fontWeight: "bold" }}
+                            required
+                          />
+                          <input
+                            type="text"
+                            value={sec.id}
+                            onChange={(e) => handleUpdateSection(idx, "id", e.target.value)}
+                            placeholder="slug-id"
+                            style={{ width: "120px", padding: "4px 6px", fontSize: "11px", fontFamily: "monospace" }}
+                            required
+                          />
+                        </div>
+
+                        <div style={{ display: "flex", gap: "4px" }}>
+                          <button
+                            type="button"
+                            disabled={idx === 0}
+                            onClick={() => handleMoveSection(idx, "up")}
+                            style={{ padding: "2px 6px", fontSize: "11px", cursor: idx === 0 ? "not-allowed" : "pointer" }}
+                            title="Move Up"
+                          >
+                            &uarr;
+                          </button>
+                          <button
+                            type="button"
+                            disabled={idx === docSections.length - 1}
+                            onClick={() => handleMoveSection(idx, "down")}
+                            style={{ padding: "2px 6px", fontSize: "11px", cursor: idx === docSections.length - 1 ? "not-allowed" : "pointer" }}
+                            title="Move Down"
+                          >
+                            &darr;
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSection(idx)}
+                            style={{ padding: "2px 6px", fontSize: "11px", color: "#c00", cursor: "pointer" }}
+                            title="Delete Section"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <textarea
+                          rows={5}
+                          value={sec.html}
+                          onChange={(e) => handleUpdateSection(idx, "html", e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: "6px 8px",
+                            fontSize: "12px",
+                            fontFamily: "monospace",
+                            lineHeight: "1.4",
+                            boxSizing: "border-box"
+                          }}
+                          placeholder="HTML or markdown text content for this section..."
+                          required
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="doc-note" style={{ display: "block", fontSize: "12px", marginBottom: "4px" }}>
+                  <strong>Revision Note (Audit Log):</strong>
+                </label>
+                <input
+                  id="doc-note"
+                  type="text"
+                  value={docNote}
+                  onChange={(e) => setDocNote(e.target.value)}
+                  style={{ width: "100%", padding: "6px 8px", fontSize: "12px", boxSizing: "border-box" }}
+                  placeholder="e.g. Updated Point Conservation Law formula and Discord role sync"
+                />
+              </div>
+
+              {selectedDocSlug !== "guidelines" && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <input
+                    id="doc-reaccept"
+                    type="checkbox"
+                    checked={docRequireReacceptance}
+                    onChange={(e) => setDocRequireReacceptance(e.target.checked)}
+                  />
+                  <label htmlFor="doc-reaccept" style={{ fontSize: "12px" }}>
+                    Require all existing registered users to re-accept this legal document upon next login
+                  </label>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "4px" }}>
+                <button
+                  type="submit"
+                  disabled={isPublishingDoc}
+                  className="action-btn"
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: "12px",
+                    backgroundColor: "#e2f0d9",
+                    borderColor: "#276a3c",
+                    color: "#276a3c",
+                    fontWeight: "bold",
+                    cursor: isPublishingDoc ? "wait" : "pointer"
+                  }}
+                >
+                  {isPublishingDoc ? "Publishing & Syncing Discord..." : "Publish Revision & Sync Rules"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (documentData) {
+                      setDocTitle(documentData.title);
+                      setDocSections([...documentData.sections]);
+                      setDocNote("");
+                      setDocStatus("Reset to current published version.");
+                    }
+                  }}
+                  className="action-btn"
+                  style={{ padding: "8px 12px", fontSize: "12px" }}
+                >
+                  Reset
+                </button>
+              </div>
+            </form>
+          </fieldset>
+
+          {/* Revision History */}
+          <fieldset className="grab-box" style={{ backgroundColor: "#ffffff" }}>
+            <legend style={{ fontWeight: "bold" }}>Revision History</legend>
+            {(!documentRevisionsData || documentRevisionsData.length === 0) ? (
+              <p style={{ margin: "4px 0", fontSize: "12px", color: "var(--text-muted)" }}>No previous revisions recorded.</p>
+            ) : (
+              <table className="data-table" style={{ fontSize: "11px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ width: "10%" }}>Rev #</th>
+                    <th style={{ width: "30%" }}>Title</th>
+                    <th style={{ width: "25%" }}>Author</th>
+                    <th style={{ width: "20%" }}>Timestamp</th>
+                    <th style={{ width: "15%" }}>Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documentRevisionsData.map((rev) => (
+                    <tr key={rev.revision}>
+                      <td><strong>#{rev.revision}</strong></td>
+                      <td>{rev.title}</td>
+                      <td>{rev.author?.username || "System"}</td>
+                      <td>{new Date(rev.createdAt).toLocaleString()}</td>
+                      <td style={{ color: "var(--text-muted)" }}>{rev.note || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </fieldset>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={<div>Loading dashboard...</div>}>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }
 

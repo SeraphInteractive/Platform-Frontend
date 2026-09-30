@@ -757,3 +757,80 @@ export async function updatePipelineProgress(data: {
   const json = await res.json();
   return json.data;
 }
+
+export interface DocumentSection {
+  id: string;
+  title: string;
+  html: string;
+}
+
+export interface DocumentData {
+  slug: string;
+  title: string;
+  sections: DocumentSection[];
+  revision: number;
+  updatedAt: string;
+  updatedBy: {
+    id: string;
+    username: string;
+    avatarUrl: string | null;
+  } | null;
+}
+
+export interface DocumentRevisionSummary {
+  revision: number;
+  title: string;
+  note: string | null;
+  requiresReacceptance: boolean;
+  author: {
+    id: string;
+    username: string;
+    avatarUrl: string | null;
+  } | null;
+  createdAt: string;
+}
+
+export interface DocumentUpdateInput {
+  title: string;
+  sections: DocumentSection[];
+  requireReacceptance?: boolean;
+  note?: string | null;
+}
+
+export async function fetchDocument(slug: string): Promise<DocumentData | null> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/documents/${slug}`, {
+    headers: getHeaders(),
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    return null;
+  }
+  const json = await res.json();
+  return json?.data || null;
+}
+
+export async function publishDocument(slug: string, update: DocumentUpdateInput): Promise<DocumentData> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/documents/${slug}`, {
+    method: "PUT",
+    headers: getHeaders(),
+    body: JSON.stringify(update)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Failed to publish document (${res.status})`);
+  }
+  const json = await res.json();
+  return json.data;
+}
+
+export async function fetchDocumentRevisions(slug: string): Promise<DocumentRevisionSummary[]> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/documents/${slug}/revisions`, {
+    headers: getHeaders(),
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    return [];
+  }
+  const json = await res.json();
+  return json?.data || [];
+}
