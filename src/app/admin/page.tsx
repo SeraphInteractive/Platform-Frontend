@@ -1696,39 +1696,255 @@ function TelemetrySection({
         )}
       </fieldset>
 
+        <fieldset className="grab-box" style={{ backgroundColor: "#ffffff", marginBottom: "12px" }}>
+          <legend style={{ fontWeight: "bold" }}>Discord Threads</legend>
+          {shotThreadMaps.length === 0 ? (
+            <p style={{ margin: 0, fontSize: "12px", color: "#666" }}>No thread mappings.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Shot</th>
+                  <th>Title</th>
+                  <th>Snowflake</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shotThreadMaps.map((m) => {
+                  const s = shotsList.find((x) => x.id === m.shotId);
+                  return (
+                    <tr key={m.shotId}>
+                      <td><code>{m.shotId.slice(0, 8)}</code></td>
+                      <td><strong>{s?.title || "Shot"}</strong></td>
+                      <td><code>{m.discordThreadId}</code></td>
+                      <td><span className="badge badge-active">SYNCED</span></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </fieldset>
+
+        <NetworkEndpointMonitor />
+      </div>
+    );
+  }
+
+  function NetworkEndpointMonitor() {
+    const [isStreaming, setIsStreaming] = useState(true);
+    const [isPinging, setIsPinging] = useState(false);
+    const [latencyData, setLatencyData] = useState<Record<string, { current: number | null; history: number[]; status: string; http: number | null }>>({
+      "api-live": { current: null, history: [], status: "probing", http: null },
+      "postgres-db": { current: null, history: [], status: "probing", http: null },
+      "redis-cache": { current: null, history: [], status: "probing", http: null },
+      "cluster-ready": { current: null, history: [], status: "probing", http: null },
+      "voting-rounds": { current: null, history: [], status: "probing", http: null },
+      "grabbox-tasks": { current: null, history: [], status: "probing", http: null },
+      "auth-session": { current: null, history: [], status: "probing", http: null },
+      "legal-docs": { current: null, history: [], status: "probing", http: null }
+    });
+
+    const runPings = async () => {
+      setIsPinging(true);
+      const targets = [
+        { id: "api-live", path: "/api/v1/health/live" },
+        { id: "postgres-db", path: "/api/v1/health/detailed" },
+        { id: "redis-cache", path: "/api/v1/health/detailed" },
+        { id: "cluster-ready", path: "/api/v1/health/ready" },
+        { id: "voting-rounds", path: "/api/v1/rounds?page=1&perPage=1" },
+        { id: "grabbox-tasks", path: "/api/v1/shots?status=available&page=1&perPage=1" },
+        { id: "auth-session", path: "/api/v1/users/me" },
+        { id: "legal-docs", path: "/api/v1/documents/terms" }
+      ];
+
+      await Promise.allSettled(
+        targets.map(async (t) => {
+          const start = performance.now();
+          try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 3000);
+            const res = await fetch(t.path, { cache: "no-store", signal: controller.signal });
+            clearTimeout(timer);
+            const elapsed = Math.round(performance.now() - start);
+
+            let measured = elapsed;
+            if ((t.id === "postgres-db" || t.id === "redis-cache") && res.ok) {
+              try {
+                const json = await res.clone().json();
+                if (t.id === "postgres-db" && json?.database?.latencyMs) measured = Number(json.database.latencyMs);
+                if (t.id === "redis-cache" && json?.redis?.latencyMs) measured = Number(json.redis.latencyMs);
+              } catch {}
+            }
+
+            const status = !res.ok ? "down" : measured > 350 ? "degraded" : "operational";
+            setLatencyData((prev) => {
+              const currentHist = prev[t.id]?.history || [];
+              return {
+                ...prev,
+                [t.id]: {
+                  current: measured,
+                  history: [...currentHist, measured].slice(-16),
+                  status,
+                  http: res.status
+                }
+              };
+            });
+          } catch {
+            const elapsed = Math.round(performance.now() - start);
+            setLatencyData((prev) => {
+              const currentHist = prev[t.id]?.history || [];
+              return {
+                ...prev,
+                [t.id]: {
+                  current: elapsed,
+                  history: [...currentHist, elapsed].slice(-16),
+                  status: "down",
+                  http: null
+                }
+              };
+            });
+          }
+        })
+      );
+      setIsPinging(false);
+    };
+
+    useEffect(() => {
+      void runPings();
+    }, []);
+
+    useEffect(() => {
+      if (!isStreaming) return;
+      const interval = setInterval(() => {
+        void runPings();
+      }, 2500);
+      return () => clearInterval(interval);
+    }, [isStreaming]);
+
+    const targetMeta = [
+      { id: "api-live", name: "API Core Gateway", tag: "CORE CONTAINER", group: "Infrastructure", desc: "HTTP event loop & process liveness" },
+      { id: "postgres-db", name: "PostgreSQL Database", tag: "PRIMARY DATASTORE", group: "Infrastructure", desc: "Connection pool & query latency" },
+      { id: "redis-cache", name: "Redis Store", tag: "KEY-VALUE CACHE", group: "Infrastructure", desc: "In-memory cache & session store" },
+      { id: "cluster-ready", name: "Cluster Readiness", tag: "BACKEND READINESS", group: "Infrastructure", desc: "Service mesh & backend status" },
+      { id: "voting-rounds", name: "Voting Rounds Feed", tag: "PUBLIC VOTING", group: "Public Outlets", desc: "Active election queries" },
+      { id: "grabbox-tasks", name: "Grab-Box Tasks Feed", tag: "PUBLIC WORK", group: "Public Outlets", desc: "Open grabbox work queue" },
+      { id: "auth-session", name: "Session Gateway", tag: "AUTH & IDENTITY", group: "Public Outlets", desc: "Auth token validation" },
+      { id: "legal-docs", name: "Legal Documents", tag: "STATIC CACHE", group: "Public Outlets", desc: "Terms & guidelines publication" }
+    ];
+
+    return (
       <fieldset className="grab-box" style={{ backgroundColor: "#ffffff" }}>
-        <legend style={{ fontWeight: "bold" }}>Discord Threads</legend>
-        {shotThreadMaps.length === 0 ? (
-          <p style={{ margin: 0, fontSize: "12px", color: "#666" }}>No thread mappings.</p>
-        ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Shot</th>
-                <th>Title</th>
-                <th>Snowflake</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shotThreadMaps.map((m) => {
-                const s = shotsList.find((x) => x.id === m.shotId);
-                return (
-                  <tr key={m.shotId}>
-                    <td><code>{m.shotId.slice(0, 8)}</code></td>
-                    <td><strong>{s?.title || "Shot"}</strong></td>
-                    <td><code>{m.discordThreadId}</code></td>
-                    <td><span className="badge badge-active">SYNCED</span></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+        <legend style={{ fontWeight: "bold" }}>API Endpoints & Infrastructure Responsiveness</legend>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
+          <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+            Streaming live diagnostic (2.5s cadence) across infrastructure and public HTTP outlets.
+          </div>
+          <div style={{ display: "flex", gap: "6px" }}>
+            <button
+              type="button"
+              className="action-btn"
+              onClick={() => setIsStreaming((prev) => !prev)}
+              style={{ fontSize: "11px", padding: "2px 8px" }}
+            >
+              {isStreaming ? "⏸ Pause Stream" : "▶ Resume Stream"}
+            </button>
+            <button
+              type="button"
+              className="action-btn"
+              disabled={isPinging}
+              onClick={runPings}
+              style={{ fontSize: "11px", padding: "2px 8px" }}
+            >
+              {isPinging ? "Pinging..." : "🔄 Ping Now"}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "8px" }}>
+          {targetMeta.map((t) => {
+            const data = latencyData[t.id];
+            const hist = data?.history || [];
+            const isOperational = data?.status === "operational";
+            const isDegraded = data?.status === "degraded";
+            const isDown = data?.status === "down";
+
+            const badgeBg = isDown ? "#fde8e8" : isDegraded ? "#fff3cd" : "#e2f0d9";
+            const badgeColor = isDown ? "#c00" : isDegraded ? "#856404" : "#276a3c";
+            const strokeColor = isDown ? "#c00" : isDegraded ? "#b8860b" : "#276a3c";
+
+            const maxH = Math.max(80, ...hist) * 1.2;
+            const pts = hist.map((val, idx) => {
+              const x = 5 + (idx / Math.max(1, hist.length - 1)) * 190;
+              const y = 35 - (Math.min(val, maxH) / maxH) * 28;
+              return `${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(" ");
+
+            return (
+              <div
+                key={t.id}
+                style={{
+                  border: "1px solid var(--border-dark)",
+                  padding: "8px",
+                  backgroundColor: "#faf9f6",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "4px"
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "12px" }}>{t.name}</strong>
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      padding: "1px 4px",
+                      borderRadius: "2px",
+                      backgroundColor: badgeBg,
+                      color: badgeColor,
+                      fontWeight: "bold",
+                      textTransform: "uppercase"
+                    }}
+                  >
+                    {data?.status || "probing"}
+                  </span>
+                </div>
+                <div style={{ fontSize: "10px", color: "#666" }}>{t.desc}</div>
+
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "4px 0" }}>
+                  <div>
+                    <span style={{ fontSize: "10px", color: "#777" }}>LATENCY: </span>
+                    <strong style={{ fontSize: "14px", fontFamily: "monospace", color: badgeColor }}>
+                      {data?.current !== null ? `${data.current} ms` : "–"}
+                    </strong>
+                  </div>
+                  <div style={{ fontSize: "10px", color: "#555", fontFamily: "monospace" }}>
+                    HTTP: {data?.http !== null ? data.http : "–"}
+                  </div>
+                </div>
+
+                {hist.length >= 2 ? (
+                  <svg viewBox="0 0 200 40" style={{ width: "100%", height: "36px", backgroundColor: "#ffffff", border: "1px solid #ddd" }}>
+                    <polyline fill="none" stroke={strokeColor} strokeWidth="1.5" strokeLinecap="round" points={pts} />
+                  </svg>
+                ) : (
+                  <div style={{ height: "36px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "#999", border: "1px dashed #ddd" }}>
+                    Gathering latency…
+                  </div>
+                )}
+
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "9px", color: "#888", fontFamily: "monospace", marginTop: "2px" }}>
+                  <span>{t.tag}</span>
+                  <span>{t.group}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </fieldset>
-    </div>
-  );
-}
+    );
+  }
 
 function ScatterChart({
   telemetryList,
