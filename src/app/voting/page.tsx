@@ -338,7 +338,11 @@ export default function VotingPage() {
       <h2 style={{ marginTop: "24px" }}>Submit Proposal</h2>
       <fieldset className="grab-box" style={{ backgroundColor: "#ffffff" }}>
         <legend>Submit Proposal</legend>
-        {!isSubmissionActive ? (
+        {isBinary ? (
+          <div style={{ fontSize: "12px", color: "#666" }}>
+            Binary rounds are quick polls curated by supervisors. Public entry proposals are not accepted.
+          </div>
+        ) : !isSubmissionActive ? (
           <div style={{ fontSize: "12px", color: "#666" }}>
             {isVotingActive
               ? "Proposal submissions are closed for this round. Finalist candidates have been published and voting is currently underway."
