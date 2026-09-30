@@ -28,7 +28,7 @@ export default function HomePage() {
         <p>
           Project Stairway has two goals- to produce a community made movie, and to create a positive, safe, and free learning community for any who wish to participate. Whether you’re around in the{" "}
           <a
-            href="https://discord.gg/vthz2zEnTT"
+            href="discord:///invite/vthz2zEnTT"
             target="_blank"
             rel="noopener noreferrer"
           >
