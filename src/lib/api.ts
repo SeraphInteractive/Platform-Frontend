@@ -506,6 +506,25 @@ export async function fetchRoundResults(roundId: string): Promise<CertifiedRound
   return result?.data ?? result;
 }
 
+export interface LedgerBallot {
+  discordId: string;
+  discordUsername: string;
+  picks: string[];
+  castAt: string;
+  updatedAt: string;
+}
+
+export async function fetchRoundLedger(roundId: string, page = 1, perPage = 50): Promise<PaginatedResponse<LedgerBallot> | null> {
+  const res = await fetch(`${getBaseUrl()}/api/v1/rounds/${roundId}/ballots?page=${page}&perPage=${perPage}`, {
+    headers: getHeaders(),
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    return null;
+  }
+  return res.json();
+}
+
 export async function castBallot(roundId: string, picks: string[]): Promise<unknown> {
   const res = await fetch(`${getBaseUrl()}/api/v1/rounds/${roundId}/ballots/me`, {
     method: "PUT",

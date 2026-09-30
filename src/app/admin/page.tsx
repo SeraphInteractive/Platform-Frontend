@@ -22,6 +22,7 @@ import {
   reinstateUser,
   fetchRoundTelemetry,
   fetchRoundLeaderboard,
+  fetchRoundLedger,
   fetchShotThreadMaps,
   fetchShots,
   createShot,
@@ -124,6 +125,7 @@ export default function AdminDashboardPage() {
   const [finalizingRound, setFinalizingRound] = useState<Round | null>(null);
   const [finalizeConfirmed, setFinalizeConfirmed] = useState<boolean>(false);
   const [isFinalizing, setIsFinalizing] = useState<boolean>(false);
+  const [viewingLedgerRound, setViewingLedgerRound] = useState<Round | null>(null);
 
   // pipeline state
   const [stepIndex, setStepIndex] = useState<number>(0);
@@ -154,6 +156,12 @@ export default function AdminDashboardPage() {
 
   const rounds = roundsData?.data || [];
   const activeRoundId = selectedRoundId || rounds[0]?.id || "";
+
+  const { data: adminLedgerData, isLoading: adminLedgerLoading } = useQuery({
+    queryKey: ["admin-ledger", viewingLedgerRound?.id],
+    queryFn: () => viewingLedgerRound ? fetchRoundLedger(viewingLedgerRound.id) : null,
+    enabled: isAuthorized && Boolean(viewingLedgerRound?.id)
+  });
 
   const { data: pendingEntriesData, isLoading: pendingLoading } = useQuery({
     queryKey: ["admin-entries", activeRoundId, entryStatusFilter],
@@ -1381,6 +1389,15 @@ export default function AdminDashboardPage() {
                               Edit
                             </button>
                           )}
+                          <button
+                            type="button"
+                            className="action-btn"
+                            onClick={() => setViewingLedgerRound(r)}
+                            style={{ fontSize: "10px", padding: "1px 5px", backgroundColor: "#f0f0f0" }}
+                            title="View supervisor ballot ledger"
+                          >
+                            Ledger
+                          </button>
                           {r.status !== "finalized" && (
                             <button
                               type="button"
@@ -1399,6 +1416,75 @@ export default function AdminDashboardPage() {
               </table>
             )}
           </fieldset>
+
+          {viewingLedgerRound && (
+            <div style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000
+            }}>
+              <fieldset className="grab-box" style={{ backgroundColor: "#ffffff", maxWidth: "640px", width: "90%", maxHeight: "80vh", overflowY: "auto", borderColor: "#333", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+                <legend style={{ fontWeight: "bold", color: "#276a3c" }}>Supervisor Ballot Ledger</legend>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <div><strong>Round:</strong> {viewingLedgerRound.title} ({viewingLedgerRound.pollType === "binary" || viewingLedgerRound.scheme === "binary" ? "Binary 1-0" : "Ranked Choice 3-2-1"})</div>
+                  <button
+                    type="button"
+                    className="action-btn"
+                    onClick={() => setViewingLedgerRound(null)}
+                    style={{ fontSize: "11px" }}
+                  >
+                    Close
+                  </button>
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "8px" }}>
+                  Live auditor records showing voter Discord IDs and recorded picks.
+                </p>
+                {adminLedgerLoading ? (
+                  <div style={{ fontSize: "12px", color: "#666" }}>Loading ballots...</div>
+                ) : !adminLedgerData || adminLedgerData.data.length === 0 ? (
+                  <div style={{ fontSize: "12px", color: "#666" }}>No ballots recorded for this round.</div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="ledger-table" style={{ width: "100%", fontSize: "12px", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid var(--border-color)", textAlign: "left" }}>
+                          <th style={{ padding: "4px 6px" }}>Discord User</th>
+                          <th style={{ padding: "4px 6px" }}>Discord ID</th>
+                          <th style={{ padding: "4px 6px" }}>Picks</th>
+                          <th style={{ padding: "4px 6px", textAlign: "right" }}>Cast At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminLedgerData.data.map((row) => (
+                          <tr key={`${row.discordId}-${row.castAt}`} style={{ borderBottom: "1px solid #eee" }}>
+                            <td style={{ padding: "4px 6px", fontWeight: "bold" }}>@{row.discordUsername}</td>
+                            <td style={{ padding: "4px 6px", fontFamily: "monospace", fontSize: "11px", color: "#555" }}>{row.discordId}</td>
+                            <td style={{ padding: "4px 6px" }}>
+                              {row.picks.map((pickId, idx) => (
+                                <div key={pickId} style={{ fontSize: "11px" }}>
+                                  {viewingLedgerRound.pollType === "binary" || viewingLedgerRound.scheme === "binary" ? "" : `${idx + 1}. `}{pickId}
+                                </div>
+                              ))}
+                            </td>
+                            <td style={{ padding: "4px 6px", textAlign: "right", whiteSpace: "nowrap", color: "#777", fontSize: "11px" }}>
+                              {new Date(row.castAt).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </fieldset>
+            </div>
+          )}
 
           {finalizingRound && (
             <div style={{

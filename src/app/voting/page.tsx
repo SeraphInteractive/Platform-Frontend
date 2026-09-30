@@ -2,12 +2,12 @@
 
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchRounds, fetchRoundEntries, createRoundEntry, castBallot, uploadEntryMedia, Entry } from "@/lib/api";
+import { fetchRounds, fetchRoundEntries, createRoundEntry, castBallot, fetchRoundLedger, uploadEntryMedia, Entry } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 export default function VotingPage() {
   const queryClient = useQueryClient();
-  const { user, login } = useAuth();
+  const { user, isSupervisor, login } = useAuth();
   const [selectedRoundId, setSelectedRoundId] = useState<string>("");
 
   // ballot ranking state
@@ -38,6 +38,12 @@ export default function VotingPage() {
     queryKey: ["entries", activeRoundId],
     queryFn: () => fetchRoundEntries(activeRoundId),
     enabled: Boolean(activeRoundId)
+  });
+
+  const { data: ledgerData, isLoading: ledgerLoading } = useQuery({
+    queryKey: ["ledger", activeRoundId],
+    queryFn: () => fetchRoundLedger(activeRoundId),
+    enabled: Boolean(activeRoundId && isSupervisor)
   });
 
   const entries = (entriesData?.data || []) as Entry[];
@@ -456,6 +462,58 @@ export default function VotingPage() {
           </form>
         )}
       </fieldset>
+
+      {/* supervisor voting ledger */}
+      {isSupervisor && activeRoundId && (
+        <>
+          <h2 style={{ marginTop: "24px" }}>Supervisor Voting Ledger</h2>
+          <fieldset className="grab-box" style={{ backgroundColor: "#ffffff" }}>
+            <legend style={{ fontWeight: "bold", color: "#276a3c" }}>Supervisor Ballot Ledger</legend>
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "8px" }}>
+              Auditable ballot records for this round displaying Discord IDs, Discord usernames, and recorded picks.
+            </p>
+            {ledgerLoading ? (
+              <div style={{ fontSize: "12px", color: "#666" }}>Loading ledger records...</div>
+            ) : !ledgerData || ledgerData.data.length === 0 ? (
+              <div style={{ fontSize: "12px", color: "#666" }}>No ballots recorded for this round yet.</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table className="ledger-table" style={{ width: "100%", fontSize: "12px", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border-color)", textAlign: "left" }}>
+                      <th style={{ padding: "6px 8px" }}>Discord User</th>
+                      <th style={{ padding: "6px 8px" }}>Discord ID</th>
+                      <th style={{ padding: "6px 8px" }}>Picks</th>
+                      <th style={{ padding: "6px 8px", textAlign: "right" }}>Cast At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ledgerData.data.map((row) => (
+                      <tr key={`${row.discordId}-${row.castAt}`} style={{ borderBottom: "1px solid #eee" }}>
+                        <td style={{ padding: "6px 8px", fontWeight: "bold" }}>@{row.discordUsername}</td>
+                        <td style={{ padding: "6px 8px", fontFamily: "monospace", fontSize: "11px", color: "#555" }}>{row.discordId}</td>
+                        <td style={{ padding: "6px 8px" }}>
+                          {row.picks.map((pickId, idx) => {
+                            const entry = entries.find((e) => e.id === pickId);
+                            return (
+                              <div key={pickId}>
+                                {isBinary ? "" : `${idx + 1}. `}{entry?.title || pickId}
+                              </div>
+                            );
+                          })}
+                        </td>
+                        <td style={{ padding: "6px 8px", textAlign: "right", whiteSpace: "nowrap", color: "#777", fontSize: "11px" }}>
+                          {new Date(row.castAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </fieldset>
+        </>
+      )}
     </div>
   );
 }
