@@ -59,12 +59,37 @@ function GrabBoxContent() {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const { data: shotsData, isLoading } = useQuery({
+  const { data: shotsData, isLoading, dataUpdatedAt } = useQuery({
     queryKey: ["shots"],
-    queryFn: fetchShots
+    queryFn: fetchShots,
+    refetchInterval: 30_000
   });
 
   const shots = (shotsData?.data || []) as unknown as LiveShot[];
+
+  const claimerIds = shots
+    .filter((s) => s.claimer?.id)
+    .map((s) => s.claimer!.id)
+    .filter((id, i, arr) => arr.indexOf(id) === i);
+
+  const { data: presenceData } = useQuery({
+    queryKey: ["presence", claimerIds.join(",")],
+    queryFn: async () => {
+      if (claimerIds.length === 0) return {};
+      const token = localStorage.getItem("stairway_token");
+      if (!token) return {};
+      const res = await fetch(`/api/v1/users/presence?ids=${claimerIds.join(",")}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (!res.ok) return {};
+      const json = await res.json();
+      return (json.data || {}) as Record<string, string>;
+    },
+    enabled: claimerIds.length > 0,
+    refetchInterval: 60_000
+  });
+
+  const presence = (presenceData || {}) as Record<string, string>;
 
   // auto-open submission modal if navigated via discord link ?shotId=...
   useEffect(() => {
@@ -319,6 +344,9 @@ function GrabBoxContent() {
           <span style={{ marginLeft: "auto", fontSize: "11px", color: "#555" }}>
             Available: <strong>{availableCount}</strong> &bull; Claimed: <strong>{claimedCount}</strong> &bull; Review: <strong>{submittedCount}</strong> &bull; Approved: <strong>{approvedCount}</strong>
           </span>
+          <span style={{ fontSize: "10px", color: "#999", marginLeft: "8px" }}>
+            {dataUpdatedAt ? `synced ${new Date(dataUpdatedAt).toLocaleTimeString()}` : ""}
+          </span>
         </div>
       </fieldset>
 
@@ -389,7 +417,25 @@ function GrabBoxContent() {
                             style={{ width: "18px", height: "18px", border: "1px solid #808080" }}
                           />
                         )}
-                        <span><strong>Claimant:</strong> @{shot.claimer.username}</span>
+                        <span>
+                          <strong>Claimant:</strong> @{shot.claimer.username}
+                          {presence[shot.claimer.id] && (
+                            <span
+                              title={presence[shot.claimer.id]}
+                              style={{
+                                display: "inline-block",
+                                width: "6px",
+                                height: "6px",
+                                borderRadius: "50%",
+                                marginLeft: "4px",
+                                backgroundColor: presence[shot.claimer.id] === "online" ? "#43b581"
+                                  : presence[shot.claimer.id] === "idle" ? "#faa61a"
+                                  : "#747f8d",
+                                verticalAlign: "middle"
+                              }}
+                            />
+                          )}
+                        </span>
                       </div>
                     ) : (
                       <em style={{ color: "#777", fontSize: "11px" }}>Open in Grab-Box</em>
