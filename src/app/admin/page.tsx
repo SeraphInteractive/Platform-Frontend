@@ -57,6 +57,10 @@ const ROLE_TIERS = [
   { value: "member", label: "Member (Unvoted)" }
 ];
 
+const TEAM_SPECIALTIES = [
+  { value: "media_team", label: "Media Team" }
+];
+
 const CONTRIBUTOR_SPECIALTIES = [
   { value: "", label: "None" },
   { value: "animator", label: "Animators" },
@@ -74,10 +78,15 @@ const CONTRIBUTOR_SPECIALTIES = [
   { value: "general_contributor", label: "General Contributors" }
 ];
 
+const ALL_SPECIALTIES = [
+  ...CONTRIBUTOR_SPECIALTIES,
+  ...TEAM_SPECIALTIES
+];
+
 function getUserSpecialty(specs?: string[]): string {
   if (!specs || specs.length === 0) return "";
   const raw = specs[0].toLowerCase().trim();
-  const match = CONTRIBUTOR_SPECIALTIES.find(
+  const match = ALL_SPECIALTIES.find(
     (s) => s.value === raw || s.label.toLowerCase() === raw
   );
   return match ? match.value : (raw === "none" ? "" : raw);
@@ -1151,6 +1160,24 @@ function AdminDashboardContent() {
                             />
                             <strong>@{u.username || u.discordUsername || u.discordId}</strong>
                             {u.isBlacklisted && <span style={{ color: "#c00", fontSize: "10px", marginLeft: "4px" }}>[BLOCKED]</span>}
+                            {u.specialties && u.specialties.length > 0 && (
+                              <div style={{ fontSize: "10px", color: "#666", marginTop: "2px", display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                                {u.specialties.map((spec) => (
+                                  <span
+                                    key={spec}
+                                    style={{
+                                      padding: "1px 4px",
+                                      backgroundColor: spec === "media_team" ? "#f3e8ff" : "#f1f3f5",
+                                      color: spec === "media_team" ? "#6b21a8" : "#495057",
+                                      border: `1px solid ${spec === "media_team" ? "#d8b4fe" : "#ced4da"}`,
+                                      borderRadius: "2px"
+                                    }}
+                                  >
+                                    {spec === "media_team" ? "Media Team" : (ALL_SPECIALTIES.find((s) => s.value === spec)?.label || spec)}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td><code>{u.discordId}</code></td>
@@ -1169,11 +1196,21 @@ function AdminDashboardContent() {
                             onChange={(e) => handleUpdateUserSpecialty(u, e.target.value)}
                             style={{ fontSize: "11px", padding: "1px 2px" }}
                           >
-                            {CONTRIBUTOR_SPECIALTIES.map((s) => (
-                              <option key={s.value} value={s.value}>
-                                {s.label}
-                              </option>
-                            ))}
+                            <option value="">None</option>
+                            <optgroup label="Team">
+                              {TEAM_SPECIALTIES.map((s) => (
+                                <option key={s.value} value={s.value}>
+                                  {s.label}
+                                </option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Contributor Craft">
+                              {CONTRIBUTOR_SPECIALTIES.filter((s) => s.value !== "").map((s) => (
+                                <option key={s.value} value={s.value}>
+                                  {s.label}
+                                </option>
+                              ))}
+                            </optgroup>
                           </select>
                         </td>
                         <td>
@@ -1235,17 +1272,27 @@ function AdminDashboardContent() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "11px" }}>Specialty (Contributor):</label>
+                  <label style={{ display: "block", fontSize: "11px" }}>Specialty:</label>
                   <select
                     value={discordSpec}
                     onChange={(e) => setDiscordSpec(e.target.value)}
                     style={{ padding: "3px", fontSize: "12px" }}
                   >
-                    {CONTRIBUTOR_SPECIALTIES.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {s.label}
-                      </option>
-                    ))}
+                    <option value="">None</option>
+                    <optgroup label="Team">
+                      {TEAM_SPECIALTIES.map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Contributor Craft">
+                      {CONTRIBUTOR_SPECIALTIES.filter((s) => s.value !== "").map((s) => (
+                        <option key={s.value} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
                 <button type="submit" className="action-btn" disabled={isAssigning} style={{ fontSize: "11px" }}>
